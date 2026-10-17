@@ -1250,6 +1250,7 @@ async function gerarIA(){
 }
 function pedirAoFerreiro(texto){
   texto = String(texto || '').trim(); if (!texto) return toast('Escreve ou diz o que queres treinar.');
+  const campo = $('#pedidoFerreiro'); if (campo) campo.value = '';
   novoRapido('auto'); rapido.pedido = texto;
   const m = texto.match(/(\d{2,3})\s*(min|minutos|m\b)/i); if (m) rapido.duracao = Math.min(120, Math.max(10, +m[1]));
   gerarIA();
@@ -1837,7 +1838,7 @@ document.addEventListener('visibilitychange', () => {
 const alterna = (arr, v) => arr.includes(v) ? arr.filter(x => x !== v) : arr.concat(v);
 const ACOES = {
   fecharFolha, irTreino: () => { fecharFolha(); irPara('vTreino'); },
-  acender(){ if (!rapido) novoRapido(); folhaRapido(); },
+  acender(){ if (!rapido) novoRapido(); rapido.pedido = ''; folhaRapido(); },
   usarSugestao(a){ novoRapido(a.dataset.v); gerar(); },
   rDur(a){ rapido.duracao = +a.dataset.v; folhaRapido(true); },
   rEq(a){ rapido.equip = alterna(rapido.equip, a.dataset.v); rapido.limite = 40; folhaRapido(true); },
