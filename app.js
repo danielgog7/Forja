@@ -654,6 +654,9 @@ function renderPerfil(){
       <label class="campo">Token<input type="password" id="gToken" value="${esc(gh.token)}" autocomplete="off"></label>
       <div class="botoes"><button class="btn quente" data-acao="ligarGH">Ligar e sincronizar</button>${gh.token ? '<button class="btn perigo" data-acao="desligarGH">Desligar</button>' : ''}</div>
       <p class="suave peq" id="syncTxt" style="margin:0"></p></div></details>
+    <div class="placa rebites col"><h2>Capa</h2><p class="suave peq" style="margin:0">Ao abrir a app, três marteladas na bigorna para entrar. Mostra a peça da semana, que ganha forma a cada treino.</p>
+      <div class="chips">${chip(cfg.capa !== false, 'pCapa', '', 'Capa ao abrir')}${chip(cfg.som !== false, 'pSom', '', 'Som do martelo')}</div>
+      <button class="btn" data-acao="verCapa">Ver a capa agora</button></div>
     <div class="placa rebites col"><h2>Cópia de segurança</h2><p class="suave peq" style="margin:0">Exporta tudo para um ficheiro. Útil antes de mudares de telemóvel.</p>
       <div class="botoes"><button class="btn" data-acao="exportar">Exportar</button><button class="btn" data-acao="importar">Importar</button></div></div>
     <p class="apagado mini centro">Exercícios e imagens: Free Exercise DB (domínio público). Os conselhos da IA não substituem um profissional se tiveres dor ou lesão.</p>`;
@@ -815,6 +818,110 @@ function renderIntro(){
     <div class="passos">${[0, 1, 2, 3, 4].map(i => `<i class="${i <= p ? 'on' : ''}"></i>`).join('')}</div></div></div>`;
 }
 
+/* ---------- Capa: três marteladas para entrar ---------- */
+// O ferro da semana: cada treino molda o lingote até virar lâmina (meta = treinos por semana).
+const LINGOTE = [[138, 180], [142, 170], [212, 170], [216, 170], [220, 170], [222, 172], [222, 176], [222, 184], [222, 188], [220, 190], [216, 190], [212, 190], [142, 190]];
+const LAMINA = [[92, 183], [130, 176], [226, 176], [226, 166], [233, 166], [233, 179], [266, 179], [266, 187], [233, 187], [233, 200], [226, 200], [226, 190], [130, 190]];
+const formaPeca = f => 'M' + LINGOTE.map((p, i) => (p[0] + (LAMINA[i][0] - p[0]) * f).toFixed(1) + ' ' + (p[1] + (LAMINA[i][1] - p[1]) * f).toFixed(1)).join(' L') + ' Z';
+let golpes = 0, capaAberta = false, escondidoEm = 0, actx = null;
+function mostrarCapa(forcar){
+  if (!cfg.pronto || (!forcar && (cfg.capa === false || ativo))) return;
+  golpes = 0; capaAberta = true;
+  const c = $('#capa'); c.classList.remove('sair'); c.hidden = false; renderCapa();
+  $('#faiscas').style.zIndex = 46;
+}
+function renderCapa(){
+  const h = new Date().getHours(), ola = h < 6 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 20 ? 'Boa tarde' : 'Boa noite';
+  const feitos = semana().filter(d => d.acesa).length, f = Math.min(1, feitos / Math.max(1, cfg.dias)), pronta = f >= 1;
+  const ult = ordenados()[0], dUlt = ult ? diasDesde(ult.inicio) : null, mes = treinos.filter(t => chaveMes(t.inicio) === chaveMes(Date.now())).length;
+  const sug = sugestao();
+  $('#capa').innerHTML = `
+    <div><div class="cinzel quente" style="font-size:15px;letter-spacing:.3em">FORJA</div>
+      <h1 style="font-size:22px;margin-top:14px;color:var(--texto);letter-spacing:.04em">${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h1>
+      ${sug ? `<p class="suave peq" style="margin:6px 0 0">Hoje: <b style="color:var(--ouro)">${TIPOS[sug.tipo].nome}</b>, ${esc(sug.motivo)}</p>` : ''}</div>
+    <div class="cena">
+      <svg viewBox="16 52 336 226" id="cCena" aria-label="Bigorna com ferro em brasa">
+        <defs>
+          <linearGradient id="cQuente" gradientUnits="userSpaceOnUse" x1="90" x2="270"><stop offset="0" stop-color="#8a1f08"/><stop offset=".22" stop-color="#e2541b"/><stop offset=".42" stop-color="#ffb347"/><stop offset=".55" stop-color="#fff1cf"/><stop offset=".7" stop-color="#ffb347"/><stop offset="1" stop-color="#c2310c"/></linearGradient>
+          <linearGradient id="cFerro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a6658"/><stop offset=".1" stop-color="#4c3e35"/><stop offset="1" stop-color="#191310"/></linearGradient>
+          <linearGradient id="cCabeca" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8d7b6e"/><stop offset=".45" stop-color="#4a3d35"/><stop offset="1" stop-color="#231b17"/></linearGradient>
+          <linearGradient id="cCabo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a33"/><stop offset="1" stop-color="#4a2c17"/></linearGradient>
+          <filter id="cBlur" x="-60%" y="-200%" width="220%" height="500%"><feGaussianBlur stdDeviation="12"/></filter>
+          <filter id="cBlur2" x="-30%" y="-100%" width="160%" height="300%"><feGaussianBlur stdDeviation="3"/></filter>
+        </defs>
+        <ellipse id="cBrilho" cx="180" cy="184" rx="${110 + 40 * f}" ry="30" fill="#ff7a1c" opacity=".45" filter="url(#cBlur)"/>
+        <path d="M70 190H290Q306 190 306 204V212H252Q238 212 234 226L226 252H256Q266 252 266 262V272H96V262Q96 252 106 252H136L128 226Q124 212 110 212H70Q40 212 28 192Q50 194 70 190Z" fill="url(#cFerro)"/>
+        <path d="M70 190H290Q306 190 306 204" fill="none" stroke="#a08877" stroke-width="1.5" opacity=".6"/>
+        <path id="cPecaBrilho" d="${formaPeca(f)}" fill="url(#cQuente)" filter="url(#cBlur2)" opacity=".85"/>
+        <path id="cPeca" d="${formaPeca(f)}" fill="url(#cQuente)"/>
+        <g id="cMartelo" style="transform-origin:330px 154px;transform:rotate(28deg)">
+          <rect x="204" y="150" width="132" height="8" rx="4" fill="url(#cCabo)"/>
+          <rect x="166" y="136" width="40" height="32" rx="4" fill="url(#cCabeca)"/>
+          <rect x="166" y="136" width="40" height="5" rx="2" fill="#a8968a" opacity=".5"/>
+        </g>
+      </svg>
+      <h2 style="margin-top:4px">${pronta ? 'Lâmina forjada esta semana' : 'A peça da semana'}</h2>
+      <p class="suave peq" style="margin:4px 0 0">${feitos} de ${cfg.dias} treinos${pronta ? '. Bom trabalho, ferreiro.' : '. Cada treino molda o ferro até virar lâmina.'}</p>
+    </div>
+    <div style="width:min(420px,100%)">
+      <div class="infos"><div>Esta semana<b>${feitos}/${cfg.dias}</b></div><div>Este mês<b>${mes} ${mes === 1 ? 'treino' : 'treinos'}</b></div>
+        <div>Último treino<b>${dUlt === null ? '—' : dUlt === 0 ? 'hoje' : dUlt === 1 ? 'ontem' : 'há ' + dUlt + ' dias'}</b></div></div>
+      <div class="golpes" id="cGolpes"><i></i><i></i><i></i></div>
+      <p class="suave peq" id="cDica" style="margin:0">Dá três marteladas para entrar</p>
+    </div>`;
+  $('#cBrilho').animate([{opacity: .35}, {opacity: .55}], {duration: 1800, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out'});
+}
+function golpe(){
+  if (!capaAberta || golpes >= 3) return;
+  const n = ++golpes, m = $('#cMartelo');
+  m.getAnimations().forEach(a => a.cancel());
+  m.animate([{transform: 'rotate(28deg)'}, {transform: 'rotate(44deg)', offset: .38}, {transform: 'rotate(-1deg)', offset: .6}, {transform: 'rotate(6deg)', offset: .72}, {transform: 'rotate(28deg)'}],
+    {duration: 480, easing: 'ease-in-out'});
+  clang(n === 3, .27);
+  setTimeout(() => impacto(n), 288);
+}
+function impacto(n){
+  const svgEl = $('#cCena'); if (!svgEl) return;
+  const pt = svgEl.createSVGPoint(); pt.x = 186; pt.y = 172;
+  const p = pt.matrixTransform(svgEl.getScreenCTM());
+  Faiscas.explosao(p.x, p.y, n === 3 ? 90 : 34);
+  vibrar(n === 3 ? [60, 40, 90] : 35);
+  $('#capa').animate([{transform: 'translate(0,0)'}, {transform: 'translate(-4px,3px)'}, {transform: 'translate(3px,-2px)'}, {transform: 'translate(0,0)'}], {duration: 170});
+  ['#cPeca', '#cPecaBrilho'].forEach(s => $(s).animate([{filter: 'brightness(2.2)'}, {filter: 'brightness(1)'}], {duration: n === 3 ? 900 : 450, easing: 'ease-out'}));
+  document.querySelectorAll('#cGolpes i').forEach((d, i) => d.classList.toggle('on', i < n));
+  $('#cDica').textContent = n === 1 ? 'Mais duas…' : n === 2 ? 'Mais uma!' : 'O ferro está pronto.';
+  if (n >= 3) setTimeout(fecharCapa, 700);
+}
+function fecharCapa(){
+  capaAberta = false; const c = $('#capa'); c.classList.add('sair');
+  setTimeout(() => { c.hidden = true; c.innerHTML = ''; $('#faiscas').style.zIndex = ''; }, 520);
+}
+// Som de martelo em metal, sintetizado (sem ficheiros de áudio).
+function clang(forte, atraso){
+  if (cfg.som === false) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    const t = actx.currentTime + (atraso || 0), saida = actx.createGain();
+    saida.gain.value = forte ? .55 : .38; saida.connect(actx.destination);
+    [[440, .8, 1.4], [1093, .45, 1.0], [1847, .32, .8], [2563, .22, .6], [3470, .14, .45]].forEach(([fr, a, dur]) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sine'; o.frequency.value = fr * (.985 + Math.random() * .03);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + .004); g.gain.exponentialRampToValueAtTime(.0005, t + dur * (forte ? 1.3 : 1));
+      o.connect(g); g.connect(saida); o.start(t); o.stop(t + dur * 1.4);
+    });
+    const len = Math.floor(actx.sampleRate * .05), buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const s = actx.createBufferSource(), hp = actx.createBiquadFilter(), gn = actx.createGain();
+    s.buffer = buf; hp.type = 'highpass'; hp.frequency.value = 1800; gn.gain.value = .7;
+    s.connect(hp); hp.connect(gn); gn.connect(saida); s.start(t);
+  } catch(e){}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden){ escondidoEm = Date.now(); return; }
+  if (escondidoEm && Date.now() - escondidoEm > 30 * 60e3 && $('#folha').hidden){ escondidoEm = 0; if (vista !== 'vTreino') RENDER[vista](); mostrarCapa(); }
+});
+
 /* ---------- Ações ---------- */
 const alterna = (arr, v) => arr.includes(v) ? arr.filter(x => x !== v) : arr.concat(v);
 const ACOES = {
@@ -899,6 +1006,9 @@ const ACOES = {
   },
   desligarGH(){ if (!confirm('Desligar a sincronização? Os dados ficam neste dispositivo.')) return; gh.token = ''; LS.set('gh', gh); sync.shas = {}; sync.sujos = {}; guardarSync(); renderPerfil(); },
   exportar, importar,
+  pCapa(){ cfg.capa = cfg.capa === false; guardarCfg(); renderPerfil(); },
+  pSom(){ cfg.som = cfg.som === false; guardarCfg(); renderPerfil(); if (cfg.som) clang(false); },
+  verCapa(){ mostrarCapa(true); },
   iObj(a){ intro.d.objetivo = a.dataset.v; renderIntro(); }, iNiv(a){ intro.d.nivel = +a.dataset.v; renderIntro(); },
   iDias(a){ intro.d.dias = +a.dataset.v; renderIntro(); }, iDur(a){ intro.d.duracao = +a.dataset.v; renderIntro(); },
   iEq(a){ intro.d.equip = alterna(intro.d.equip, a.dataset.v); a.classList.toggle('on'); },
@@ -941,5 +1051,10 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden
   setInterval(tique, 1000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   estadoSync(); agendarSync(800);
+  const capa = $('#capa');
+  capa.addEventListener('pointerdown', e => { e.preventDefault(); golpe(); });
+  capa.addEventListener('pointerup', () => { if (cfg.som === false) return; try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch(e){} });
+  addEventListener('keydown', e => { if (capaAberta && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); golpe(); } });
   if (new URLSearchParams(location.search).get('acao') === 'treinar' && cfg.pronto && !ativo) ACOES.acender();
+  else mostrarCapa();
 })();
