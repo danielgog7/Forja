@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0907">
+<meta name="description" content="Forja: escolhe rapidamente o treino de hoje com o equipamento que tens em casa.">
+<title>Forja</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preload" href="cinzel.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<canvas id="faiscas" aria-hidden="true"></canvas>
+<div id="lareira" aria-hidden="true"></div>
+
+<div id="app">
+  <header class="topo">
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <defs><linearGradient id="lgQ" x1="0" x2="1"><stop offset="0" stop-color="#c2310c"/><stop offset=".5" stop-color="#ffb347"/><stop offset=".75" stop-color="#fff1cf"/><stop offset="1" stop-color="#ff7a1c"/></linearGradient></defs>
+      <rect x="15" y="15" width="18" height="5" rx="2" fill="url(#lgQ)"/>
+      <path d="M9 21h29c2 0 3 1 3 3v2h-8c-2 0-3 1-3.5 3L28 34h5c1.2 0 2 .8 2 2v2H13v-2c0-1.2.8-2 2-2h5l-1.5-5c-.5-2-1.5-3-3.5-3H9c-3 0-5-2-6-5 2 .4 4 0 6-1z" fill="#5a4a40"/>
+      <circle cx="12" cy="10" r="1.2" fill="#ffc861"/><circle cx="36" cy="8" r="1" fill="#ff9a3c"/><circle cx="30" cy="5" r=".8" fill="#ffe39a"/>
+    </svg>
+    <h1 class="marca quente">FORJA</h1>
+    <span class="cresce"></span>
+    <span id="syncPonto" class="ponto" hidden></span>
+  </header>
+  <main>
+    <section id="vInicio" class="vista"></section>
+    <section id="vTreino" class="vista" hidden></section>
+    <section id="vExercicios" class="vista" hidden></section>
+    <section id="vHistorico" class="vista" hidden></section>
+    <section id="vPerfil" class="vista" hidden></section>
+  </main>
+</div>
+
+<div id="barraTreino" hidden data-acao="irTreino"></div>
+<div id="descanso" hidden></div>
+
+<nav id="nav">
+  <button data-vista="vInicio" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h14c1.5 0 2 .8 2 2H16c-1 0-1.7.6-2 1.5L13 16h2.5c.8 0 1.5.7 1.5 1.5V19H7v-1.5C7 16.7 7.7 16 8.5 16H11l-1-3.5c-.3-.9-1-1.5-2-1.5H4c-1.4 0-2.3-1-2.7-2.3"/><path d="M9 5.5l1-1.5M13 4.5V3M16 5.5l1.2-1.2"/></svg>Forja</button>
+  <button data-vista="vExercicios"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>Exercícios</button>
+  <button data-vista="vHistorico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h11a2 2 0 0 1 2 2v1H9"/><path d="M7 3a2 2 0 0 0-2 2v13a3 3 0 0 0 3 3h10a2 2 0 0 0 2-2V8"/><path d="M9 10h7M9 14h7M9 18h4"/></svg>Histórico</button>
+  <button data-vista="vPerfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"/></svg>Perfil</button>
+</nav>
+
+<div id="intro" hidden></div>
+<div id="folha" class="folha" hidden><div class="veu" data-acao="fecharFolha"></div><div class="caixa" id="folhaCaixa"></div></div>
+
+<script src="app.js"></script>
+</body>
+</html>
