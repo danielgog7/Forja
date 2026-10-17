@@ -152,11 +152,11 @@ const Faiscas = (() => {
   function tam(){ const d = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * d; c.height = H * d; x.setTransform(d, 0, 0, d, 0, 0); }
   const nova = (px, py, vx, vy, vida, t, g, extra) => ps.push(Object.assign({x: px, y: py, vx, vy, v: 0, vida, t, g}, extra));
   // riscos: faíscas de forja (traços rápidos que ressaltam na superfície "chao" = {y, x1, x2})
-  function explosao(px, py, n = 26, riscos = false, chao = null){
+  function explosao(px, py, n = 26, riscos = false, chao = null, forca = 1){
     for (let i = 0; i < n; i++){
       if (riscos){
-        const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * (Math.random() < .7 ? 1.75 : 1.1), s = 160 + Math.random() * 460;
-        nova(px + (Math.random() - .5) * 12, py, Math.cos(a) * s, Math.sin(a) * s, .55 + Math.random() * 1.05, 1 + Math.random() * 1.6, 820, {r: 1, chao});
+        const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * (Math.random() < .7 ? 1.75 : 1.1), s = (160 + Math.random() * 460) * forca;
+        nova(px + (Math.random() - .5) * 12 * forca, py, Math.cos(a) * s, Math.sin(a) * s, (.55 + Math.random() * 1.05) * (forca < 1 ? .7 : 1), (1 + Math.random() * 1.6) * (forca < 1 ? .75 : 1), 820 * Math.max(.5, forca), {r: 1, chao});
       } else {
         const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.5, s = 110 + Math.random() * 280;
         nova(px, py, Math.cos(a) * s, Math.sin(a) * s, .45 + Math.random() * .7, 1 + Math.random() * 1.7, 560);
@@ -280,6 +280,18 @@ function sugestao(){
 /* ---------- Navegação ---------- */
 let vista = 'vInicio';
 const RENDER = {vInicio: renderInicio, vTreino: renderTreino, vExercicios: renderExercicios, vHistorico: renderHistorico, vPerfil: renderPerfil};
+// Ao entrar num ecrã, as cantoneiras das placas visíveis aquecem e soltam faíscas, como acabadas de forjar.
+function forjarPlacas(){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const ps = Array.from(document.querySelectorAll('section.vista:not([hidden]) .placa')).filter(p => { const r = p.getBoundingClientRect(); return r.height && r.top < innerHeight - 40 && r.bottom > 0; }).slice(0, 4);
+  ps.forEach((p, i) => setTimeout(() => {
+    p.classList.remove('acende'); void p.offsetWidth; p.classList.add('acende');
+    setTimeout(() => p.classList.remove('acende'), 1600);
+    const r = p.getBoundingClientRect();
+    Faiscas.explosao(r.left + 7, r.top + 7, 6, true, null, .3);
+    Faiscas.explosao(r.right - 7, r.top + 7, 6, true, null, .3);
+  }, 90 + i * 130));
+}
 function irPara(v){
   vista = v;
   document.querySelectorAll('section.vista').forEach(s => s.hidden = s.id !== v);
@@ -287,6 +299,7 @@ function irPara(v){
   RENDER[v]();
   scrollTo(0, 0);
   atualizarBarras();
+  if ($('#capa').hidden && $('#intro').hidden) forjarPlacas();
 }
 let folhaAtual = '', voltarFolha = null;
 function abrirFolha(html, nome = ''){ folhaAtual = nome; const c = $('#folhaCaixa'); c.innerHTML = '<div class="pega"></div>' + html; c.scrollTop = 0; $('#folha').hidden = false; document.body.style.overflow = 'hidden'; }
@@ -1008,7 +1021,7 @@ function impacto(n){
 }
 function fecharCapa(){
   capaAberta = false; const c = $('#capa'); c.classList.add('sair');
-  setTimeout(() => { c.hidden = true; c.innerHTML = ''; $('#faiscas').style.zIndex = ''; }, 520);
+  setTimeout(() => { c.hidden = true; c.innerHTML = ''; $('#faiscas').style.zIndex = ''; forjarPlacas(); }, 520);
 }
 // Som de martelo em metal, sintetizado (sem ficheiros de áudio).
 function clang(forte, atraso){
