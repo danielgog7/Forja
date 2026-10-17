@@ -127,7 +127,16 @@ let EX = [], EXI = {};
 const PARTILHADO = ['nome', 'objetivo', 'nivel', 'dias', 'duracao', 'equip', 'favs', 'modelos', 'meta', 'aquecer', 'alongar'];
 function guardarCfg(partilhado){ if (partilhado){ cfg.ts = Date.now(); agendarSync(); } LS.set('cfg', cfg); }
 let tGuardar;
-function guardarAtivo(ja){ clearTimeout(tGuardar); if (ja) LS.set('ativo', ativo); else tGuardar = setTimeout(() => LS.set('ativo', ativo), 300); }
+function guardarAtivo(ja){ clearTimeout(tGuardar); if (ja) LS.set('ativo', ativo); else tGuardar = setTimeout(() => LS.set('ativo', ativo), 300); ecraLigado(); }
+// Ecrã sempre ligado enquanto há um treino em curso (o sistema solta-o sozinho se a app for para segundo plano).
+let travaEcra = null, aPedirTrava = false;
+async function ecraLigado(){
+  if (!ativo){ if (travaEcra){ const t = travaEcra; travaEcra = null; t.release().catch(() => {}); } return; }
+  if (travaEcra || aPedirTrava || document.hidden || !('wakeLock' in navigator)) return;
+  aPedirTrava = true;
+  try { travaEcra = await navigator.wakeLock.request('screen'); travaEcra.addEventListener('release', () => { travaEcra = null; }); if (!ativo) ecraLigado(); }
+  catch(e){} finally { aPedirTrava = false; }
+}
 function guardarTreinos(){ LS.set('treinos', treinos); LS.set('apagados', apagados); }
 
 /* ---------- Utilitários ---------- */
@@ -159,6 +168,18 @@ function ultimaVez(id){
   for (const t of ordenados()){ const it = t.itens.find(x => x.id === id); if (it && it.series.length) return {data: t.inicio, series: it.series}; }
   return null;
 }
+let cacheUlt = null, cacheUltChave = '';
+function ultimas(){
+  const k = treinos.length + ':' + treinos.reduce((a, t) => Math.max(a, t.atualizado || t.fim || 0), 0);
+  if (cacheUlt && k === cacheUltChave) return cacheUlt;
+  const m = {};
+  for (const t of ordenados()) for (const it of t.itens) if (!it.fase && it.series.length && !m[it.id]) m[it.id] = {data: t.inicio, series: it.series};
+  cacheUlt = m; cacheUltChave = k; return m;
+}
+const haQuanto = ts => { const d = diasDesde(ts); return d === 0 ? 'hoje' : d === 1 ? 'ontem' : 'há ' + d + ' dias'; };
+// Linha curta com a última vez; o atributo data-hist liga o toque longo de 5 s para apagar o histórico.
+const histMini = id => { const u = ultimas()[id]; return u ? `<span class="hist-mini">Última: ${u.series.length} ${u.series.length === 1 ? 'série' : 'séries'} · ${esc(resumoSeries(u.series))} · ${haQuanto(u.data)}</span>` : ''; };
+const attrHist = id => ultimas()[id] ? ` data-hist="${id}"` : '';
 function historicoEx(id){
   const r = [];
   for (const t of ordenados()){ const it = t.itens.find(x => x.id === id); if (it && it.series.length) r.push({data: t.inicio, series: it.series}); }
@@ -432,7 +453,7 @@ function fecharFolha(){ if (folhaAtual === 'aforjar') cancelarIA(); clearTimeout
 const cab = (titulo, extra = '') => `<div class="cab">${extra}<h2>${titulo}</h2><button class="btn fantasma" data-acao="fecharFolha">Fechar</button></div>`;
 const chip = (on, acao, v, txt) => `<span class="chip${on ? ' on' : ''}" data-acao="${acao}" data-v="${esc(v)}">${txt}</span>`;
 const tileEq = (e, on, acao, extra = '') => `<div class="ferramenta${on ? ' on' : ''}" data-acao="${acao}" data-v="${e.id}">${extra}${svg(ICONES[e.id], 1.6)}<span>${esc(e.nome)}</span></div>`;
-const linhaEx = (ex, extra = '', acao = 'verEx') => `<div class="item" data-acao="${acao}" data-id="${ex.id}"><img class="mini-img" src="${img(ex)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="t"><b>${esc(ex.n)}</b><span>${esc(musculosTxt(ex))}${extra}</span></div>${cfg.favs.includes(ex.id) ? `<span style="color:var(--ouro)">${IC.estrela}</span>` : ''}</div>`;
+const linhaEx = (ex, extra = '', acao = 'verEx') => `<div class="item" data-acao="${acao}" data-id="${ex.id}"${attrHist(ex.id)}><img class="mini-img" src="${img(ex)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="t"><b>${esc(ex.n)}</b><span>${esc(musculosTxt(ex))}${extra}</span>${histMini(ex.id)}</div>${cfg.favs.includes(ex.id) ? `<span style="color:var(--ouro)">${IC.estrela}</span>` : ''}</div>`;
 
 /* ---------- Início ---------- */
 function semana(){
@@ -487,8 +508,8 @@ function exerciciosRapido(){
 const rotuloComecar = () => { const n = rapido.escolhidos.length; return n ? `Começar com ${n} ${n === 1 ? 'exercício' : 'exercícios'}` : 'Começar treino'; };
 function linhaRapido(e, cont){
   const k = rapido.escolhidos.indexOf(e.id), n = cont[e.id] || 0;
-  return `<div class="item${k >= 0 ? ' escolhido' : ''}" data-acao="rEscolher" data-id="${e.id}"><img class="mini-img" src="${img(e)}" alt="" loading="lazy" data-acao="verEx" data-id="${e.id}" onerror="this.style.visibility='hidden'">
-    <div class="t"><b>${cfg.favs.includes(e.id) ? `<span class="fav-mini">${IC.estrela}</span>` : ''}${esc(e.n)}</b><span>${esc(musculosTxt(e))}${n ? ` · feito ${n}×` : ''}</span></div><span class="ordem">${k >= 0 ? k + 1 : ''}</span></div>`;
+  return `<div class="item${k >= 0 ? ' escolhido' : ''}" data-acao="rEscolher" data-id="${e.id}"${attrHist(e.id)}><img class="mini-img" src="${img(e)}" alt="" loading="lazy" data-acao="verEx" data-id="${e.id}" onerror="this.style.visibility='hidden'">
+    <div class="t"><b>${cfg.favs.includes(e.id) ? `<span class="fav-mini">${IC.estrela}</span>` : ''}${esc(e.n)}</b><span>${esc(musculosTxt(e))}${n ? ` · feito ${n}×` : ''}</span>${histMini(e.id)}</div><span class="ordem">${k >= 0 ? k + 1 : ''}</span></div>`;
 }
 function folhaRapido(manter){
   const cx = $('#folhaCaixa'), st = manter && !$('#folha').hidden ? cx.scrollTop : 0;
@@ -552,6 +573,7 @@ function gerar(){
   folhaPlano();
 }
 function folhaPlano(){
+  rapido.plano.forEach(aplicarUltimaVez);
   const p = rapido.plano, mob = (rapido.real || rapido.tipo) === 'mobilidade';
   rapido.fasesAq = rapido.aquec && !mob && p.length ? construirAquecimento(p, equipHoje()) : [];
   rapido.fasesAl = rapido.along && !mob && p.length ? construirAlongamentos(p, equipHoje()) : [];
@@ -608,11 +630,23 @@ function comecar(){
   guardarAtivo(true); fecharFolha(); irPara('vTreino');
   Faiscas.explosao(innerWidth / 2, innerHeight * .35, 40); vibrar(30);
 }
+// O exercício abre com o número de séries da última vez (só enquanto nada foi registado nele).
+function aplicarUltimaVez(it){
+  if (it.fase || it.hist) return; it.hist = 1;
+  const u = ultimaVez(it.id); if (!u || !u.series.length) return;
+  if (!it.series.some(s => s.feito || s.kg !== '' || s.reps !== '')) it.series = u.series.slice(0, 8).map(() => ({kg: '', reps: '', feito: false}));
+}
+// Peso e repetições: os da última vez, série a série. Se o ferreiro mandar subir ou baixar o peso, já vem com o valor novo.
 function preencherSugestoes(itens){
   for (const it of itens){
+    aplicarUltimaVez(it);
     it.prog = progressao(it);
-    const kg = it.prog && it.prog.kg !== undefined ? it.prog.kg : null, u = ultimaVez(it.id);
-    it.series.forEach((s, j) => { if (s.kg !== '') return; if (kg) s.kg = kg; else if (u){ const a = u.series[Math.min(j, u.series.length - 1)]; if (+a.kg) s.kg = a.kg; } });
+    const p = it.prog || {}, u = ultimaVez(it.id), muda = p.tipo === 'sobe' || p.tipo === 'baixa';
+    it.series.forEach((s, j) => {
+      const a = u && u.series[Math.min(j, u.series.length - 1)];
+      if (s.kg === ''){ if (muda && +p.kg) s.kg = p.kg; else if (a && +a.kg) s.kg = a.kg; else if (+p.kg) s.kg = p.kg; }
+      if (s.reps === ''){ if (muda && +p.reps) s.reps = p.reps; else if (a && +a.reps) s.reps = a.reps; }
+    });
   }
 }
 function cardEx(it, i){
@@ -768,12 +802,110 @@ function folhaEx(id){
         <button class="btn" data-acao="fav" data-id="${id}" style="${fav ? 'color:var(--ouro);border-color:#7a3a18' : ''}">${IC.estrela} ${fav ? 'Favorito' : 'Marcar favorito'}</button></div>
       ${ativo && !ativo.itens.some(it => it.id === id) ? `<button class="btn quente" data-acao="addAoTreino" data-id="${id}">${IC.mais} Adicionar ao treino em curso</button>` : ''}
       <h3>Como fazer</h3><div id="iaBox">${blocoDicas(ex, d)}</div>
-      ${hist.length ? `<h3>As tuas últimas vezes</h3><div class="lista">${hist.map(h => `<div class="linha entre peq"><span class="suave">${dataCurta(h.data)}</span><span>${resumoSeries(h.series)}</span></div>`).join('')}</div>` : ''}
+      ${hist.length ? blocoProgressoEx(id) : ''}
+      ${hist.length ? `<h3>As tuas últimas vezes</h3><div class="lista" data-hist="${id}">${hist.map(h => `<div class="linha entre peq"><span class="suave">${dataCurta(h.data)}</span><span>${resumoSeries(h.series)}</span></div>`).join('')}</div>` : ''}
     </div>`);
   clearInterval(tAnim);
   if (ex.i.length > 1) tAnim = setInterval(() => { const a = $('#animEx'); if (a) a.classList.toggle('b'); else clearInterval(tAnim); }, 1100);
   if (!d && cfg.chave && !ex.pt) pedirDicas(id);
+  ligarGraficoEx();
 }
+/* ---------- Progresso por exercício ---------- */
+let grafEx = 'carga', gExPts = [];
+function metricasEx(ex, h){
+  const tempo = ehTempo(prescricao(ex).alvo), peso = h.some(x => x.series.some(s => +s.kg > 0));
+  if (peso) return [
+    {k: 'carga', nome: 'Carga máxima', u: 'kg', f: ss => Math.max(...ss.map(s => +s.kg || 0))},
+    {k: 'forca', nome: 'Força máxima estimada', u: 'kg', f: ss => Math.max(...ss.map(e1rm)), nota: 'O peso que, em teoria, conseguirias levantar uma única vez, calculado a partir das tuas séries.'},
+    {k: 'volume', nome: 'Volume', u: 'kg', f: ss => ss.reduce((a, s) => a + (+s.kg || 0) * (+s.reps || 0), 0), nota: 'Peso vezes repetições, somado em todas as séries do treino.'}];
+  return [{k: 'carga', nome: tempo ? 'Melhor tempo' : 'Máximo de repetições', u: tempo ? 's' : 'reps', f: ss => Math.max(...ss.map(s => +s.reps || 0))},
+    {k: 'volume', nome: tempo ? 'Tempo total' : 'Total de repetições', u: tempo ? 's' : 'reps', f: ss => ss.reduce((a, s) => a + (+s.reps || 0), 0)}];
+}
+function blocoProgressoEx(id){
+  const ex = EXI[id], h = historicoEx(id).slice(0, 24).reverse(); if (!h.length) return '';
+  const ms = metricasEx(ex, h), m = ms.find(x => x.k === grafEx) || ms[0];
+  const pts = h.map(x => ({ts: x.data, v: m.f(x.series), series: x.series})), fmt = v => num(m.k === 'volume' ? Math.round(v) : Math.round(v * 10) / 10) + ' ' + m.u;
+  const ult = pts[pts.length - 1], melhor = pts.reduce((a, b) => b.v >= a.v ? b : a), dif = ult.v - pts[0].v;
+  return `<div id="gEx" data-id="${id}" class="col" style="gap:10px"><h3>Progresso</h3>
+    <div class="chips">${ms.map(x => chip(x.k === m.k, 'gEx', x.k, x.nome)).join('')}</div>
+    <div class="estat"><div><b>${fmt(ult.v)}</b><span>última vez</span></div><div><b>${fmt(melhor.v)}</b><span>melhor · ${new Date(melhor.ts).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'}).replace('.', '')}</span></div>
+      <div><b>${pts.length > 1 ? (dif > 0 ? '+' : dif < 0 ? '−' : '') + fmt(Math.abs(dif)) : '—'}</b><span>desde o início</span></div></div>
+    ${pts.length > 1 ? graficoEx(pts, fmt, melhor) : '<p class="suave peq" style="margin:0">Faz este exercício mais uma vez para veres a linha da evolução.</p>'}
+    ${m.nota ? `<p class="apagado mini" style="margin:0">${m.nota}</p>` : ''}</div>`;
+}
+function graficoEx(pts, fmt, melhor){
+  const W = 340, H = 172, L = 44, R = 16, T = 18, B = 24;
+  const vs = pts.map(p => p.v), lo0 = Math.min(...vs), hi0 = Math.max(...vs), folga = (hi0 - lo0) * .15 || Math.max(1, hi0 * .1);
+  const lo = Math.max(0, lo0 - folga), hi = hi0 + folga, x0 = pts[0].ts, x1 = pts[pts.length - 1].ts;
+  const X = ts => x1 === x0 ? (L + W - R) / 2 : L + (ts - x0) / (x1 - x0) * (W - L - R), Y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const ticks = [lo0, (lo0 + hi0) / 2, hi0].filter((v, i, a) => a.indexOf(v) === i);
+  gExPts = pts.map(p => ({x: X(p.ts), y: Y(p.v), txt: `${dataCurta(p.ts)} · ${fmt(p.v)}`, sub: resumoSeries(p.series)}));
+  const linha = gExPts.map((p, k) => (k ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join('');
+  const u = gExPts[gExPts.length - 1], b = gExPts[pts.indexOf(melhor)], fmtD = ts => new Date(ts).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'});
+  return `<div class="graf-ex"><svg id="gExSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico da evolução do exercício">
+    <defs><linearGradient id="gExLinha" x1="0" x2="1"><stop offset="0" stop-color="#c2410f"/><stop offset=".6" stop-color="#ff8a2a"/><stop offset="1" stop-color="#ffc861"/></linearGradient>
+      <linearGradient id="gExArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".22"/><stop offset="1" stop-color="#ff8a2a" stop-opacity="0"/></linearGradient>
+      <filter id="fExBrilho" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+    ${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="#3a2d25" stroke-width="1"/><text x="${L - 6}" y="${(Y(v) + 3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="#8a796b">${num(Math.round(v * 10) / 10)}</text>`).join('')}
+    <path d="${linha}L${u.x.toFixed(1)} ${H - B}L${gExPts[0].x.toFixed(1)} ${H - B}Z" fill="url(#gExArea)"/>
+    <path d="${linha}" fill="none" stroke="#ff7a1c" stroke-width="5" opacity=".35" filter="url(#fExBrilho)"/>
+    <path d="${linha}" fill="none" stroke="url(#gExLinha)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${gExPts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#ff8a2a" stroke="#1f1714" stroke-width="2"/>`).join('')}
+    <circle cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" r="5.5" fill="#ffd27a" stroke="#1f1714" stroke-width="2"/>
+    <text x="${Math.min(W - R, Math.max(L + 14, b.x)).toFixed(1)}" y="${Math.max(11, b.y - 10).toFixed(1)}" text-anchor="middle" font-size="10" fill="#ffd27a" font-weight="700">melhor</text>
+    <line id="gExCruz" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="#d8c3ad" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>
+    <circle id="gExFoco" r="6" fill="none" stroke="#fff1cf" stroke-width="2" opacity="0"/>
+    <text x="${L}" y="${H - 6}" font-size="10" fill="#8a796b">${fmtD(x0)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end" font-size="10" fill="#8a796b">${fmtD(x1)}</text>
+  </svg><div class="graf-dica" id="gExDica" hidden></div></div>`;
+}
+// Toque ou passagem do rato: mostra a data, o valor e as séries do treino mais próximo.
+function ligarGraficoEx(){
+  const svg = $('#gExSvg'); if (!svg) return;
+  const dica = $('#gExDica'), cruz = $('#gExCruz'), foco = $('#gExFoco');
+  const mostrar = e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const v = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const p = gExPts.reduce((a, q) => Math.abs(q.x - v.x) < Math.abs(a.x - v.x) ? q : a, gExPts[0]);
+    cruz.setAttribute('x1', p.x); cruz.setAttribute('x2', p.x); cruz.setAttribute('opacity', '.7');
+    foco.setAttribute('cx', p.x); foco.setAttribute('cy', p.y); foco.setAttribute('opacity', '1');
+    dica.innerHTML = `<b>${esc(p.txt)}</b><span>${esc(p.sub)}</span>`; dica.hidden = false;
+    const caixa = svg.getBoundingClientRect(), px = p.x / 340 * caixa.width;
+    dica.style.left = Math.max(0, Math.min(caixa.width - dica.offsetWidth, px - dica.offsetWidth / 2)) + 'px';
+  };
+  svg.addEventListener('pointermove', mostrar); svg.addEventListener('pointerdown', mostrar);
+  svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse'){ dica.hidden = true; cruz.setAttribute('opacity', '0'); foco.setAttribute('opacity', '0'); } });
+}
+// Apagar o histórico de um exercício (toque longo de 5 s): tira-o de todos os treinos guardados.
+function apagarHistoricoEx(id){
+  const ex = EXI[id], afetados = treinos.filter(t => t.itens.some(it => it.id === id));
+  if (!ex || !afetados.length) return;
+  if (!confirm(`Apagar o histórico de "${ex.n}"?\n\nSai de ${afetados.length} ${afetados.length === 1 ? 'treino' : 'treinos'}. Não dá para desfazer.`)) return;
+  const agora = Date.now();
+  for (const t of afetados){
+    const m = chaveMes(t.inicio);
+    t.itens = t.itens.filter(it => it.id !== id); t.atualizado = agora;
+    if (!t.itens.length){ treinos = treinos.filter(x => x.id !== t.id); apagados[t.id] = {mes: m, ts: agora}; }
+    marcarSujo(m);
+  }
+  guardarTreinos(); cacheUlt = null; toast('Histórico apagado.');
+  if ($('#folha').hidden) RENDER[vista]();
+  else if (folhaAtual === 'rapido') folhaRapido(true);
+  else if (folhaAtual === 'seletor') listaSeletor();
+  else if ($('#animEx')) folhaEx(id);
+}
+(() => {
+  let alvo = null, tIni = 0, tFim = 0, x0 = 0, y0 = 0, engolir = false;
+  const limpar = () => { clearTimeout(tIni); clearTimeout(tFim); if (alvo) alvo.classList.remove('a-apagar'); alvo = null; };
+  document.addEventListener('pointerdown', e => {
+    const el = e.target.closest && e.target.closest('[data-hist]'); limpar(); if (!el || !e.isPrimary) return;
+    alvo = el; x0 = e.clientX; y0 = e.clientY;
+    tIni = setTimeout(() => { if (alvo === el){ el.classList.add('a-apagar'); vibrar(15); } }, 600);
+    tFim = setTimeout(() => { if (alvo !== el) return; const id = el.dataset.hist; limpar(); engolir = true; setTimeout(() => { engolir = false; }, 900); vibrar([30, 40, 30]); apagarHistoricoEx(id); }, 5000);
+  }, true);
+  document.addEventListener('pointermove', e => { if (alvo && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) limpar(); }, true);
+  ['pointerup', 'pointercancel', 'scroll'].forEach(ev => document.addEventListener(ev, limpar, true));
+  document.addEventListener('click', e => { if (engolir){ e.stopPropagation(); e.preventDefault(); engolir = false; } }, true);
+  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('[data-hist]')) e.preventDefault(); });
+})();
 function blocoDicas(ex, d){
   if (ex.pt) return `<ol class="passos-ex">${ex.ins.map(p => `<li>${esc(p)}</li>`).join('')}</ol>${(ex.dc || []).length ? `<div class="placa brasa" style="padding:12px"><h2 style="margin-bottom:6px">Conselhos do ferreiro</h2><ul class="dicas">${ex.dc.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}`;
   if (d) return `<ol class="passos-ex">${d.passos.map(p => `<li>${esc(p)}</li>`).join('')}</ol>
@@ -1469,8 +1601,8 @@ async function sincPesos(){
 /* ---------- Montar o meu treino e modelos ---------- */
 function linhaSel(e){
   const k = sel.escolhidos.indexOf(e.id);
-  return `<div class="item${k >= 0 ? ' escolhido' : ''}" data-acao="selMarcar" data-id="${e.id}"><img class="mini-img" src="${img(e)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
-    <div class="t"><b>${esc(e.n)}</b><span>${esc(musculosTxt(e))}${e.c !== 'forca' ? ' · ' + CATS[e.c] : ''}</span></div><span class="ordem">${k >= 0 ? k + 1 : ''}</span></div>`;
+  return `<div class="item${k >= 0 ? ' escolhido' : ''}" data-acao="selMarcar" data-id="${e.id}"${attrHist(e.id)}><img class="mini-img" src="${img(e)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+    <div class="t"><b>${esc(e.n)}</b><span>${esc(musculosTxt(e))}${e.c !== 'forca' ? ' · ' + CATS[e.c] : ''}</span>${histMini(e.id)}</div><span class="ordem">${k >= 0 ? k + 1 : ''}</span></div>`;
 }
 function planoDeModelo(m){
   novoRapido(TIPOS[m.tipo] && !TIPOS[m.tipo].oculto ? m.tipo : 'livre'); rapido.real = m.tipo; rapido.nome = m.nome; rapido.modelo = m.id;
@@ -1885,6 +2017,7 @@ const ACOES = {
   dMenos(){ descanso.fim -= 15000; descanso.total = Math.max(1000, descanso.total - 15000); LS.set('descanso', descanso); desenharDescanso(); },
   dMais(){ descanso.fim = Math.max(descanso.fim, Date.now()) + 15000; descanso.total += 15000; descanso.avisado = false; LS.set('descanso', descanso); desenharDescanso(); },
   dSaltar: pararDescanso,
+  gEx(a){ grafEx = a.dataset.v; const b = $('#gEx'); if (b){ b.outerHTML = blocoProgressoEx(b.dataset.id); ligarGraficoEx(); } },
   verEx(a){ const f = folhaAtual; voltarFolha = f === 'plano' ? folhaPlano : f === 'rapido' ? () => folhaRapido() : f.startsWith('treino:') ? () => folhaTreino(f.slice(7)) : null; folhaEx(a.dataset.id); },
   voltarFolha(){ const f = voltarFolha; voltarFolha = null; if (f) f(); },
   fav(a){ cfg.favs = alterna(cfg.favs, a.dataset.id); guardarCfg(true); folhaEx(a.dataset.id); if (vista === 'vExercicios') renderExercicios(); },
@@ -2020,7 +2153,7 @@ document.addEventListener('click', e => {
   const f = ACOES[a.dataset.acao]; if (f) f(a, e);
 });
 document.addEventListener('input', e => { const c = e.target.closest('[data-campo]'); if (c && CAMPOS[c.dataset.campo]) CAMPOS[c.dataset.campo](c, e); });
-document.addEventListener('visibilitychange', () => { if (document.hidden && ativo) LS.set('ativo', ativo); if (!document.hidden) agendarSync(800); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && ativo) LS.set('ativo', ativo); if (!document.hidden){ agendarSync(800); ecraLigado(); } });
 addEventListener('online', () => agendarSync(500));
 addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden) fecharFolha(); if (e.key === 'Enter' && e.target.id === 'pedidoFerreiro'){ e.preventDefault(); pedirAoFerreiro(e.target.value); } });
 
@@ -2034,6 +2167,7 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden
   if (!cfg.pronto){ intro.d.nome = cfg.nome || ''; $('#intro').hidden = false; renderIntro(); }
   irPara(ativo ? 'vTreino' : 'vInicio');
   if (descanso) desenharDescanso();
+  ecraLigado();
   setInterval(tique, 1000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   estadoSync(); agendarSync(800);

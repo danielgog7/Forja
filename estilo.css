@@ -302,3 +302,16 @@ textarea { resize: vertical; min-height: 58px; }
 @media (prefers-reduced-motion: reduce) { .capa-dica, #capa .luzFogo, .capa-sombra { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .corpo .aquece, .corpo .brasa-musc { animation: none; } }
 @media (prefers-reduced-motion: reduce) { #lareira, .brasas i.acesa, #descanso.pronto, .placa.brasa::after, .opcao.on::after, .placa.acende::before { animation: none; } }
+/* Histórico curto nas listas e toque longo para o apagar */
+.item .t .hist-mini { display: block; margin-top: 2px; font-size: 12px; color: #d9a35c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-hist] { position: relative; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+[data-hist].a-apagar { border-color: #b8461a; }
+[data-hist].a-apagar::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: 2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #c2310c, #ff8a2a, #ffd27a); transform-origin: left; animation: encherApagar 4.4s linear forwards; box-shadow: 0 0 8px rgba(255,120,30,.6); }
+[data-hist].a-apagar::before { content: 'Continua a carregar para apagar o histórico'; position: absolute; right: 8px; bottom: 8px; z-index: 2; font-size: 11px; color: #ffb06a; background: rgba(18,12,9,.94); padding: 2px 7px; border-radius: 6px; pointer-events: none; }
+@keyframes encherApagar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Gráfico de progresso por exercício */
+.graf-ex { position: relative; }
+.graf-ex svg { width: 100%; height: auto; display: block; touch-action: pan-y; font-family: system-ui, sans-serif; }
+.graf-dica { position: absolute; top: 0; pointer-events: none; background: #120d0a; border: 1px solid var(--aresta); border-radius: 10px; padding: 6px 9px; font-size: 12px; max-width: 230px; box-shadow: 0 6px 16px rgba(0,0,0,.5); }
+.graf-dica b { display: block; color: var(--texto); font-weight: 600; } .graf-dica span { color: var(--suave); }
+@media (prefers-reduced-motion: reduce) { [data-hist].a-apagar::after { animation-duration: .01s; animation-delay: 4.4s; } }
