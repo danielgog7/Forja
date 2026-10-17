@@ -1,5 +1,5 @@
 // Forja — service worker: a app funciona sem internet e atualiza-se sozinha quando há ligação.
-const CACHE = 'forja-v22';
+const CACHE = 'forja-v23';
 const IMAGENS = 'forja-img';
 const FICHEIROS = ['./', './index.html', './estilo.css', './app.js', './corpo.js', './exercicios.json', './cinzel.woff2', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './pictogramas/marcha_linha.svg', './pictogramas/anjos_parede.svg'];
@@ -12,7 +12,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(ks => Promise.all(ks.filter(k => k !== CACHE && k !== IMAGENS).map(k => caches.delete(k))))
+      .then(ks => Promise.all(ks.filter(k => k.startsWith('forja-') && k !== CACHE && k !== IMAGENS).map(k => caches.delete(k))))  // só as da Forja: a Garfada e o Mirante partilham o mesmo endereço
       .then(() => self.clients.claim())
   );
 });
