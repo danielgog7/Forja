@@ -468,7 +468,7 @@ function renderInicio(){
 
 /* ---------- Início rápido e plano ---------- */
 let rapido = null;
-function novoRapido(tipo){ rapido = {tipo: tipo || 'auto', duracao: cfg.duracao || 60, equip: [], musculos: [], escolhidos: [], especial: null, limite: 40, plano: null, pedido: '', nota: '', aquec: cfg.aquecer !== false, along: cfg.alongar !== false}; }
+function novoRapido(tipo){ rapido = {tipo: tipo || 'auto', duracao: cfg.duracao || 60, equip: [], musculos: [], escolhidos: [], especial: null, limite: 40, plano: null, pedido: '', nota: '', aquec: cfg.aquecer === true, along: cfg.alongar === true}; }
 const equipHoje = () => rapido && rapido.equip && rapido.equip.length ? rapido.equip : cfg.equip;
 const ATALHOS = [['sug', 'Sugestão'], ['push', 'Empurrar'], ['pull', 'Puxar'], ['pernas', 'Pernas'], ['superior', 'Superior'], ['inferior', 'Inferior'], ['corpo', 'Corpo inteiro'], ['core', 'Core']];
 const musculosDe = t => Array.from(new Set((TIPOS[t].plano || []).map(x => x.split(':')[0])));
@@ -876,8 +876,8 @@ function renderPerfil(){
       <div><h3>Duração habitual</h3><div class="chips" style="margin-top:8px">${[30, 45, 60, 75, 90].map(n => chip(cfg.duracao === n, 'pDur', n, n + ' min')).join('')}</div></div></div>
     <div class="placa rebites"><h2>O meu ginásio</h2><p class="suave peq" style="margin:-4px 0 12px">O equipamento que tens em casa. É este que aparece para escolheres ao acender a forja.</p>
       <div class="grelha">${EQUIP.filter(e => e.id !== 'corpo').map(e => tileEq(e, cfg.equip.includes(e.id), 'pEq')).join('')}</div></div>
-    <div class="placa rebites col"><h2>Aquecimento e alongamentos</h2><p class="suave peq" style="margin:0">Acrescentados ao início e ao fim de cada treino. Podes mudar antes de começar.</p>
-      <div class="chips">${chip(cfg.aquecer !== false, 'pAquecer', '', 'Aquecimento')}${chip(cfg.alongar !== false, 'pAlongar', '', 'Alongamentos no fim')}</div></div>
+    <div class="placa rebites col"><h2>Aquecimento e alongamentos</h2><p class="suave peq" style="margin:0">Marca para virem sempre ligados ao acender a forja. Podes mudar antes de começar.</p>
+      <div class="chips">${chip(cfg.aquecer === true, 'pAquecer', '', 'Aquecimento')}${chip(cfg.alongar === true, 'pAlongar', '', 'Alongamentos no fim')}</div></div>
     <div class="placa rebites col"><h2>Imagens sem internet</h2><p class="suave peq" style="margin:0">As imagens vêm da internet e ficam guardadas quando as vês. Para treinar sem rede, guarda já as dos exercícios que podes fazer (${nImg} imagens, cerca de ${Math.round(nImg * 38 / 1024)} MB).</p>
       <button class="btn" data-acao="guardarImagens">Guardar imagens no dispositivo</button></div>
     <div class="placa rebites col"><h2>Inteligência artificial</h2>
@@ -1508,6 +1508,58 @@ function bigornaSVG(){
   ${fixa('M121 262.8L133.5 262L135.5 279.8L119 280.4Z', 127.4, 276.6)}
   ${fixa('M290.5 262L303 262.8L305 280.4L288.5 279.8Z', 296.8, 276.6)}`;
 }
+// Martelo de ferreiro (pena transversal): cabeça de aço chanfrada, cabo de freixo e pega de couro. Coordenadas no repouso da animação.
+const CABECA = 'M199 184Q215 185.4 231 184L233.5 181.5L234 164Q235.4 159 235.2 154Q235 148.5 234 145L220.4 127.6Q215 124.6 209.6 127.6L196 145Q195 148.5 194.8 154Q194.6 159 196 164L196.5 181.5Z';
+const CABO = 'M228 149.6C270 149.4 320 147 430 145.6L430 164C320 163.4 270 161 228 160.6Z';
+const COURO = 'M338 146.8C360 146.3 400 145.8 430 145.3L430 164.3C400 164 360 163.8 338 163.4Z';
+const DEFS_MARTELO = `
+    <linearGradient id="gmFace" gradientUnits="userSpaceOnUse" x1="199" y1="0" x2="231" y2="0"><stop offset="0" stop-color="#5d544e"/><stop offset=".32" stop-color="#9c928b"/><stop offset=".55" stop-color="#ddd3cb"/><stop offset=".72" stop-color="#9d928b"/><stop offset="1" stop-color="#3f3833"/></linearGradient>
+    <linearGradient id="gmChanfroE" gradientUnits="userSpaceOnUse" x1="0" y1="128" x2="0" y2="184"><stop offset="0" stop-color="#7a5640"/><stop offset=".5" stop-color="#6b4a36"/><stop offset="1" stop-color="#9a6440"/></linearGradient>
+    <linearGradient id="gmChanfroD" gradientUnits="userSpaceOnUse" x1="0" y1="128" x2="0" y2="184"><stop offset="0" stop-color="#2e2825"/><stop offset="1" stop-color="#110e0c"/></linearGradient>
+    <linearGradient id="gmAltura" gradientUnits="userSpaceOnUse" x1="0" y1="124" x2="0" y2="186"><stop offset="0" stop-color="#000" stop-opacity=".3"/><stop offset=".3" stop-color="#000" stop-opacity="0"/><stop offset=".8" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
+    <linearGradient id="gmCabo" gradientUnits="userSpaceOnUse" x1="0" y1="145" x2="0" y2="164"><stop offset="0" stop-color="#d9a26a"/><stop offset=".22" stop-color="#a87242"/><stop offset=".68" stop-color="#6c4425"/><stop offset="1" stop-color="#3a2210"/></linearGradient>
+    <linearGradient id="gmCouro" gradientUnits="userSpaceOnUse" x1="0" y1="145" x2="0" y2="165"><stop offset="0" stop-color="#6a4630"/><stop offset=".3" stop-color="#42291a"/><stop offset="1" stop-color="#170c06"/></linearGradient>
+    <clipPath id="cpCabeca"><path d="${CABECA}"/></clipPath>
+    <clipPath id="cpCabo"><path d="${CABO}"/></clipPath>
+    <clipPath id="cpCouro"><path d="${COURO}"/></clipPath>`;
+function marteloSVG(){
+  let sem = 5; const rnd = () => (sem = (sem * 16807) % 2147483647) / 2147483647;
+  const voltas = Array.from({length: 14}, (_, i) => { const x = 336 + i * 7;
+    return `<path d="M${x} 146L${x + 6} 164.6" stroke="#120804" stroke-width="1.4"/><path d="M${x - 1.3} 146L${x + 4.7} 164.6" stroke="#9a6a46" stroke-width=".5" opacity=".6"/>`; }).join('');
+  const picadas = Array.from({length: 14}, () => `<ellipse cx="${(198 + rnd() * 34).toFixed(1)}" cy="${(132 + rnd() * 50).toFixed(1)}" rx="${(.4 + rnd() * 1.1).toFixed(2)}" ry="${(.3 + rnd() * .6).toFixed(2)}" fill="${rnd() < .7 ? '#000' : '#fff'}" opacity="${(.1 + rnd() * .14).toFixed(2)}"/>`).join('');
+  return `
+      <path d="${CABO}" fill="url(#gmCabo)"/>
+      <g clip-path="url(#cpCabo)">
+        <path d="M240 152.4C290 152 330 150 430 149.2M246 156.9C300 157.1 350 156.6 430 156.9M262 154.6Q300 154.1 332 153.2M282 159.3Q310 159.7 336 159.3M300 150.6Q318 150.2 334 149.6" stroke="#4a2a14" stroke-width=".7" fill="none" opacity=".55"/>
+        <path d="M228 162.4C270 162.8 320 164.8 430 165.4" stroke="#000" stroke-width="5" opacity=".4" fill="none" filter="url(#fB1)"/>
+        <ellipse cx="312" cy="150.2" rx="24" ry="1.5" fill="#ffe1b8" opacity=".25" filter="url(#fB1)"/>
+      </g>
+      <path d="M236 150.3C280 150 320 147.8 338 147.3" stroke="#f6cd98" stroke-width=".7" fill="none" opacity=".55"/>
+      <path d="${COURO}" fill="url(#gmCouro)"/>
+      <g clip-path="url(#cpCouro)">${voltas}</g>
+      <path d="M338.6 146.8L338.6 163.4" stroke="#8a5e3e" stroke-width="1.3"/><path d="M336.6 147L336.6 163.2" stroke="#1a0e07" stroke-width="1.6"/>
+      <ellipse cx="237" cy="155" rx="4.5" ry="7.5" fill="#000" opacity=".6" filter="url(#fB1)"/>
+      <path d="${CABECA}" fill="url(#gmFace)"/>
+      <g clip-path="url(#cpCabeca)">
+        <path d="M196.5 181.5L196 164Q194.6 159 194.8 154Q195 148.5 196 145L209.6 127.6L211.6 129.4L199.6 145.6Q198.5 148.8 198.4 154Q198.3 159 199.7 164L200.2 181Z" fill="url(#gmChanfroE)"/>
+        <path d="M233.5 181.5L234 164Q235.4 159 235.2 154Q235 148.5 234 145L220.4 127.6L218.4 129.4L230.4 145.6Q231.5 148.8 231.6 154Q231.7 159 230.3 164L229.8 181Z" fill="url(#gmChanfroD)"/>
+        <path d="M190 145.4L209.6 127.6Q215 124.6 220.4 127.6L240 145.4Z" fill="#fff" opacity=".09"/>
+        <rect x="188" y="120" width="54" height="70" fill="url(#gmAltura)"/>
+        <ellipse cx="219.5" cy="163" rx="1.9" ry="15" fill="#fff" opacity=".34" filter="url(#fB1)"/>
+        <ellipse cx="208" cy="137" rx="1.1" ry="6" fill="#fff" opacity=".2" filter="url(#fB1)" transform="rotate(38 208 137)"/>
+        ${picadas}
+        <path d="${CABECA}" fill="url(#gCabecaBaixo)"/>
+      </g>
+      <path d="${CABECA}" fill="#000" filter="url(#fGrao)" opacity=".18"/>
+      <path d="M200.2 181L199.7 164Q198.3 159 198.4 154Q198.5 148.8 199.6 145.6L211.6 129.4" stroke="#e2c0a2" stroke-width=".5" fill="none" opacity=".5"/>
+      <path d="M229.8 181L230.3 164Q231.7 159 231.6 154Q231.5 148.8 230.4 145.6L218.4 129.4" stroke="#0b0908" stroke-width=".6" fill="none" opacity=".7"/>
+      <path d="M198 145.6L232 145.6" stroke="#e8ddd4" stroke-width=".5" opacity=".4"/><path d="M198 146.3L232 146.3" stroke="#000" stroke-width=".5" opacity=".3"/>
+      <path d="M196.7 181.3L233.3 181.3" stroke="#d8cdc4" stroke-width=".6" opacity=".6"/>
+      <path d="M199 184Q215 185.4 231 184" stroke="#ffcf8a" stroke-width="1.3" fill="none" opacity=".9"/>
+      <path d="M210.4 127.4Q215 125 219.6 127.4" stroke="#f4eae1" stroke-width=".9" fill="none" opacity=".8"/>
+      <path d="M196 145Q195 148.5 194.8 154Q194.6 159 196 164L196.5 181.5" stroke="#ff9a4a" stroke-width=".9" fill="none" opacity=".55"/>
+      <path d="M234 145Q235 148.5 235.2 154Q235.4 159 234 164L233.5 181.5" stroke="#0a0807" stroke-width=".8" fill="none"/>`;
+}
 const PIVO = '380px 155px', IMPACTO = [215, 184];
 function cenaForja(f){
   const jx = lerp(160, 112, f), cx = lerp(206, 212, f), meia = lerp(40, 92, f);
@@ -1533,9 +1585,7 @@ function cenaForja(f){
     <radialGradient id="gAquecido" cx="30%" cy="0%" r="80%"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".45"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
     <linearGradient id="gMetal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff8e4"/><stop offset=".25" stop-color="#ffe08f"/><stop offset=".55" stop-color="#ffa13c"/><stop offset=".8" stop-color="#e2541b"/><stop offset="1" stop-color="#8a2208"/></linearGradient>
     <linearGradient id="gMetalPontas" x1="0" x2="1"><stop offset="0" stop-color="#6a1405" stop-opacity=".9"/><stop offset=".28" stop-color="#6a1405" stop-opacity="0"/><stop offset=".72" stop-color="#6a1405" stop-opacity="0"/><stop offset="1" stop-color="#6a1405" stop-opacity=".9"/></linearGradient>
-    <linearGradient id="gCabeca" x1="0" x2="1"><stop offset="0" stop-color="#1a1614"/><stop offset=".22" stop-color="#4a423d"/><stop offset=".46" stop-color="#9b908a"/><stop offset=".54" stop-color="#d6ccc4"/><stop offset=".72" stop-color="#6d625b"/><stop offset="1" stop-color="#211c19"/></linearGradient>
     <linearGradient id="gCabecaBaixo" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#ff8a2a" stop-opacity="0"/><stop offset="1" stop-color="#ff8a2a" stop-opacity=".8"/></linearGradient>
-    <linearGradient id="gCabo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c08a55"/><stop offset=".35" stop-color="#8f5e36"/><stop offset=".8" stop-color="#5a3720"/><stop offset="1" stop-color="#341e10"/></linearGradient>
     <linearGradient id="gTenaz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a605a"/><stop offset=".5" stop-color="#2c2623"/><stop offset="1" stop-color="#110e0c"/></linearGradient>
     <radialGradient id="gClarao" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffffff"/><stop offset=".2" stop-color="#fff1cf"/><stop offset=".5" stop-color="#ffb347" stop-opacity=".7"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
     <linearGradient id="gRasto" gradientUnits="userSpaceOnUse" x1="240" y1="68" x2="215" y2="160"><stop offset="0" stop-color="#ffd9b0" stop-opacity="0"/><stop offset="1" stop-color="#ffd9b0" stop-opacity=".5"/></linearGradient>
@@ -1547,7 +1597,7 @@ function cenaForja(f){
       <feColorMatrix in="r" type="matrix" values="0 0 0 0 .62  0 0 0 0 .56  0 0 0 0 .52  0 0 0 1.4 -.62" result="n"/><feComposite in="n" in2="SourceGraphic" operator="in"/></filter>
     <radialGradient id="gMascara" gradientUnits="userSpaceOnUse" cx="98" cy="150" r="175"><stop offset=".45" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
     <mask id="mParede" maskUnits="userSpaceOnUse" x="-80" y="0" width="400" height="260"><rect x="-80" y="0" width="400" height="260" fill="url(#gMascara)"/></mask>
-    <clipPath id="cpBigorna"><path d="${BIGORNA}"/></clipPath>${DEFS_BIGORNA}
+    <clipPath id="cpBigorna"><path d="${BIGORNA}"/></clipPath>${DEFS_BIGORNA}${DEFS_MARTELO}
     <clipPath id="cpBoca"><path d="M40 202L40 128Q40 84 98 84Q156 84 156 128L156 202Z"/></clipPath>
   </defs>
 
@@ -1583,12 +1633,7 @@ function cenaForja(f){
   <path id="cRasto" d="M246 72A165 165 0 0 0 215 155" fill="none" stroke="url(#gRasto)" stroke-width="34" stroke-linecap="round" opacity="0" filter="url(#fB3)"/>
   <g id="cMarteloIdle" style="transform-origin:${PIVO}">
     <g id="cMartelo" style="transform-origin:${PIVO};transform:rotate(32deg)">
-      <path d="M190 151L420 146L420 162L190 160Z" fill="url(#gCabo)"/>
-      <path d="M238 153.5Q320 151.5 418 150M240 157.5Q330 157 418 156.5" stroke="#3a2212" stroke-width=".8" fill="none" opacity=".55"/>
-      <path d="M199 184L231 184L234 180L234 162Q234 158 232 156L228 140L222 128L208 128L202 140L198 156Q196 158 196 162L196 180Z" fill="url(#gCabeca)"/>
-      <path d="M199 184L231 184L234 180L234 162Q234 158 232 156L228 140L222 128L208 128L202 140L198 156Q196 158 196 162L196 180Z" fill="url(#gCabecaBaixo)"/>
-      <path d="M208 128L222 128" stroke="#e9e0d8" stroke-width="1.2" opacity=".7"/>
-      <path d="M196 180L234 180" stroke="#cfc4bb" stroke-width=".8" opacity=".5"/>
+      ${marteloSVG()}
     </g>
   </g>
   <ellipse id="cOnda" cx="${IMPACTO[0]}" cy="191" rx="50" ry="7" fill="none" stroke="#ffd27a" stroke-width="2.5" opacity="0" style="transform-origin:${IMPACTO[0]}px 191px"/>
@@ -1826,7 +1871,7 @@ const ACOES = {
   tipoDireto(a){ novoRapido(a.dataset.v); gerar(); },
   rAquec(){ rapido.aquec = !rapido.aquec; folhaRapido(true); }, rAlong(){ rapido.along = !rapido.along; folhaRapido(true); },
   pAquec(){ rapido.aquec = !rapido.aquec; folhaPlano(); }, pAlong(){ rapido.along = !rapido.along; folhaPlano(); },
-  pAquecer(){ cfg.aquecer = cfg.aquecer === false; guardarCfg(true); renderPerfil(); }, pAlongar(){ cfg.alongar = cfg.alongar === false; guardarCfg(true); renderPerfil(); },
+  pAquecer(){ cfg.aquecer = cfg.aquecer !== true; guardarCfg(true); renderPerfil(); }, pAlongar(){ cfg.alongar = cfg.alongar !== true; guardarCfg(true); renderPerfil(); },
   feitoFase(a){
     const i = +a.dataset.i, it = ativo.itens[i], novo = !it.series.every(s => s.feito);
     it.series.forEach(s => { s.feito = novo; if (novo){ s.kg = 0; s.reps = parseInt(it.alvo) || 1; s.ts = Date.now(); } });
