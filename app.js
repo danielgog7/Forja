@@ -254,6 +254,74 @@ const Faiscas = (() => {
   return {explosao, emissor(f){ emissor = f; if (f) iniciar(); }, de(el, n){ if (!el) return; const r = el.getBoundingClientRect(); explosao(r.left + r.width / 2, r.top + r.height / 2, n); }};
 })();
 
+/* ---------- Fumo ao tocar ----------
+   Camada própria, acima de tudo (barra, folhas, avisos). Toque normal: um fio de fumo pequeno.
+   Toque em algo clicável: anel de fumo maior, um clarão de metal quente e umas brasas. */
+const Fumo = (() => {
+  const c = document.createElement('canvas'); c.id = 'fumoToque'; c.setAttribute('aria-hidden', 'true'); document.body.appendChild(c);
+  const x = c.getContext('2d'), reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W = 0, H = 0, ps = [], corre = false, ult = 0;
+  function tam(){ const d = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * d; c.height = H * d; x.setTransform(d, 0, 0, d, 0, 0); }
+  // Nuvens irregulares: vários tufos sobrepostos para não parecerem bolas perfeitas.
+  const nuvem = () => { const k = document.createElement('canvas'); k.width = k.height = 96; const g = k.getContext('2d');
+    for (let i = 0; i < 16; i++){ const a = Math.random() * 7, d = Math.random() * 22, px = 48 + Math.cos(a) * d, py = 48 + Math.sin(a) * d, r = 14 + Math.random() * 16;
+      const gr = g.createRadialGradient(px, py, 0, px, py, r); gr.addColorStop(0, 'rgba(176,160,148,.16)'); gr.addColorStop(.6, 'rgba(120,108,100,.07)'); gr.addColorStop(1, 'rgba(90,80,74,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 96, 96); }
+    return k; };
+  const NUVENS = [nuvem(), nuvem(), nuvem()];
+  const CALOR = (() => { const k = document.createElement('canvas'); k.width = k.height = 64; const g = k.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, 'rgba(255,214,150,.9)'); r.addColorStop(.3, 'rgba(255,130,40,.45)'); r.addColorStop(1, 'rgba(255,70,10,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return k; })();
+  const R = Math.random;
+  const tufo = (px, py, vx, vy, r0, vida, op, cresce) => ps.push({k: 'f', x: px, y: py, vx, vy, r0, vida, op, cresce, v: 0, rot: R() * 7, vr: (R() - .5) * 1.6, img: NUVENS[(R() * 3) | 0]});
+  function soprar(px, py, grande){
+    if (reduz || ps.length > 160) return;
+    if (!grande){
+      for (let i = 0; i < 4; i++) tufo(px + (R() - .5) * 8, py + (R() - .5) * 6, (R() - .5) * 30, -(10 + R() * 20), 7 + R() * 4, .9 + R() * .6, .62, 2.5);
+    } else {
+      const n = 9, a0 = R() * 7;
+      for (let i = 0; i < n; i++){ const a = a0 + i / n * Math.PI * 2 + (R() - .5) * .4, s = 70 + R() * 50; tufo(px, py, Math.cos(a) * s, Math.sin(a) * s * .8 - 10, 9 + R() * 5, 1.1 + R() * .6, .72, 2.8); }
+      tufo(px, py, 0, -20, 14, 1.4, .5, 2.2);
+      ps.push({k: 'c', x: px, y: py, v: 0, vida: .45});
+      for (let i = 0; i < 6; i++){ const a = -Math.PI / 2 + (R() - .5) * 2.2, s = 60 + R() * 120; ps.push({k: 'b', x: px, y: py, vx: Math.cos(a) * s, vy: Math.sin(a) * s, v: 0, vida: .5 + R() * .5, t: .8 + R() * .9}); }
+    }
+    if (!corre){ corre = true; ult = performance.now(); requestAnimationFrame(passo); }
+  }
+  function passo(t){
+    const dt = Math.min(.05, (t - ult) / 1000 || .016), d = Math.min(2, devicePixelRatio || 1); ult = t;
+    x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, W, H);
+    for (let i = ps.length - 1; i >= 0; i--){
+      const p = ps[i]; p.v += dt; const f = p.v / p.vida;
+      if (f >= 1){ ps.splice(i, 1); continue; }
+      if (p.k === 'c'){ x.globalCompositeOperation = 'lighter'; x.globalAlpha = .55 * (1 - f) * (1 - f); const r = 16 + 26 * f; x.drawImage(CALOR, p.x - r, p.y - r, r * 2, r * 2); continue; }
+      if (p.k === 'b'){
+        p.vx *= 1 - 2 * dt; p.vy += 160 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+        x.globalCompositeOperation = 'lighter'; x.globalAlpha = 1;
+        x.fillStyle = `hsla(${44 - 30 * f},100%,${86 - 36 * f}%,${1 - f * f})`; x.beginPath(); x.arc(p.x, p.y, p.t * (1 - f * .4), 0, 7); x.fill();
+        continue;
+      }
+      const arr = Math.max(0, 1 - 3.2 * dt); p.vx *= arr; p.vy = p.vy * arr - 26 * dt; p.x += p.vx * dt + Math.sin(p.v * 2.4 + i) * 6 * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      const r = p.r0 * (1 + f * p.cresce), alfa = p.op * Math.min(1, f * 9) * Math.pow(1 - f, 1.6);
+      x.globalCompositeOperation = 'source-over'; x.globalAlpha = alfa;
+      x.setTransform(d * Math.cos(p.rot), d * Math.sin(p.rot), -d * Math.sin(p.rot), d * Math.cos(p.rot), p.x * d, p.y * d);
+      x.drawImage(p.img, -r * 1.5, -r * 1.5, r * 3, r * 3); x.setTransform(d, 0, 0, d, 0, 0);
+    }
+    x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
+    if (ps.length && !document.hidden) requestAnimationFrame(passo); else { corre = false; x.clearRect(0, 0, W, H); }
+  }
+  addEventListener('resize', tam); tam();
+  // Só conta como toque se o dedo não arrastou (arrastar é deslizar a página, não toque).
+  const CLICAVEL = 'button:not(:disabled), a[href], [data-acao], [data-vista], select, label, summary, [role="button"], input[type="checkbox"], input[type="radio"], input[type="range"]';
+  let ini = null;
+  document.addEventListener('pointerdown', e => { ini = e.isPrimary && !capaAberta ? {x: e.clientX, y: e.clientY, t: performance.now(), alvo: e.target} : null; }, {capture: true, passive: true});
+  document.addEventListener('pointerup', e => {
+    const s = ini; ini = null; if (!s || capaAberta) return;
+    if (Math.hypot(e.clientX - s.x, e.clientY - s.y) > 12 || performance.now() - s.t > 700) return;
+    soprar(e.clientX, e.clientY, !!(s.alvo.closest && s.alvo.closest(CLICAVEL)));
+  }, {capture: true, passive: true});
+  document.addEventListener('pointercancel', () => { ini = null; }, true);
+  return {soprar};
+})();
+
 /* ---------- Gerador de treinos ---------- */
 function prescricao(ex){
   if (ex.c === 'alongamento') return {series: 2, alvo: '30 s', desc: 30};
