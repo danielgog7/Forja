@@ -426,9 +426,9 @@ function irPara(v){
   atualizarBarras();
   if ($('#capa').hidden && $('#intro').hidden) forjarPlacas();
 }
-let folhaAtual = '', voltarFolha = null;
+let folhaAtual = '', voltarFolha = null, tLento = 0;
 function abrirFolha(html, nome = ''){ folhaAtual = nome; const c = $('#folhaCaixa'); c.innerHTML = '<div class="pega"></div>' + html; c.scrollTop = 0; $('#folha').hidden = false; document.body.style.overflow = 'hidden'; }
-function fecharFolha(){ $('#folha').hidden = true; document.body.style.overflow = ''; clearInterval(tAnim); folhaAtual = ''; }
+function fecharFolha(){ if (folhaAtual === 'aforjar') cancelarIA(); clearTimeout(tLento); $('#folha').hidden = true; document.body.style.overflow = ''; clearInterval(tAnim); folhaAtual = ''; }
 const cab = (titulo, extra = '') => `<div class="cab">${extra}<h2>${titulo}</h2><button class="btn fantasma" data-acao="fecharFolha">Fechar</button></div>`;
 const chip = (on, acao, v, txt) => `<span class="chip${on ? ' on' : ''}" data-acao="${acao}" data-v="${esc(v)}">${txt}</span>`;
 const tileEq = (e, on, acao, extra = '') => `<div class="ferramenta${on ? ' on' : ''}" data-acao="${acao}" data-v="${e.id}">${extra}${svg(ICONES[e.id], 1.6)}<span>${esc(e.nome)}</span></div>`;
@@ -522,11 +522,12 @@ function atualizarEscolhidos(){
 const nomeMusculos = ms => ms.length > 3 ? ms.slice(0, 3).map(m => MUSC[m]).join(' + ') + '…' : ms.map(m => MUSC[m]).join(' + ');
 // Monta o plano pelas regras, a partir do que está escolhido no painel.
 function planoPorRegras(){
-  const eq = equipHoje(), d = rapido.duracao;
+  const ind = lerIndicacoes(rapido.pedido), eq = equipComIndicacoes(equipHoje(), ind), d = rapido.duracao, mus = ind.musculos.length ? ind.musculos : rapido.musculos;
   if (rapido.escolhidos.length){ rapido.real = 'livre'; rapido.nome = rapido.musculos.length ? nomeMusculos(rapido.musculos) : 'Treino à medida'; rapido.plano = rapido.escolhidos.map(id => novoItem(EXI[id])); }
   else if (rapido.especial){ rapido.real = rapido.especial; rapido.nome = TIPOS[rapido.especial].nome; rapido.plano = rapido.especial === 'longevidade' ? gerarLongevidade(d, eq) : gerarMobilidade(d, eq); }
-  else if (rapido.musculos.length){ rapido.real = 'musculos'; rapido.nome = nomeMusculos(rapido.musculos); rapido.plano = gerarTreino({tipo: 'musculos', musculos: rapido.musculos, duracao: d, equip: eq}); }
+  else if (mus.length){ rapido.real = 'musculos'; rapido.nome = nomeMusculos(mus); rapido.plano = gerarTreino({tipo: 'musculos', musculos: mus, duracao: d, equip: eq}); }
   else { const t = (sugestao() || {tipo: 'corpo'}).tipo; rapido.real = t; rapido.nome = TIPOS[t].nome; rapido.plano = gerarTreino({tipo: t, duracao: d, equip: eq}); }
+  if (ind.evitar.length) rapido.plano = rapido.plano.filter(it => rapido.escolhidos.includes(it.id) || !ind.evitar.includes(EXI[it.id].p[0]));
   rapido.nota = '';
   if (!rapido.plano.length){ toast('Não encontrei exercícios com esta escolha. Escolhe mais equipamento.'); return false; }
   return true;
@@ -784,16 +785,29 @@ function blocoDicas(ex, d){
 }
 
 /* ---------- IA (Gemini, chave do utilizador) ---------- */
-async function geminiTexto(texto, json = true){
+// Pedido em curso à IA (para poder cancelar) e se o modelo aceita desligar o "pensamento".
+let iaPedido = null, iaPensarSempre = false;
+function cancelarIA(){ if (iaPedido){ iaPedido.cancelado = true; iaPedido.ctl.abort(); } }
+async function geminiTexto(texto, json = true, espera = 40000){
   if (!cfg.chave) throw new Error('Falta a chave do Gemini no Perfil.');
   const modelo = String(cfg.modelo || 'gemini-flash-latest').replace(/^models\//, '');
-  let r;
-  try {
-    r = await fetch(`${API}models/${encodeURIComponent(modelo)}:generateContent`, {method: 'POST',
-      headers: {'Content-Type': 'application/json', 'x-goog-api-key': cfg.chave},
-      body: JSON.stringify({contents: [{role: 'user', parts: [{text: texto}]}], generationConfig: json ? {temperature: .3, responseMimeType: 'application/json'} : {temperature: .6}})});
-  } catch(e){ throw new Error('Sem ligação à internet.'); }
-  const j = await r.json().catch(() => ({}));
+  const gc = json ? {temperature: .3, responseMimeType: 'application/json'} : {temperature: .6};
+  const pedir = async pensar => {
+    const ped = iaPedido = {ctl: new AbortController(), cancelado: false}, t = setTimeout(() => ped.ctl.abort(), espera);
+    try {
+      return await fetch(`${API}models/${encodeURIComponent(modelo)}:generateContent`, {method: 'POST', signal: ped.ctl.signal,
+        headers: {'Content-Type': 'application/json', 'x-goog-api-key': cfg.chave},
+        body: JSON.stringify({contents: [{role: 'user', parts: [{text: texto}]}], generationConfig: pensar ? gc : Object.assign({thinkingConfig: {thinkingBudget: 0}}, gc)})});
+    } catch(e){
+      if (ped.cancelado) throw new Error('Cancelado.');
+      if (ped.ctl.signal.aborted) throw new Error('O ferreiro demorou demasiado a responder.');
+      throw new Error('Sem ligação à internet.');
+    } finally { clearTimeout(t); if (iaPedido === ped) iaPedido = null; }
+  };
+  let r = await pedir(iaPensarSempre || !/flash/i.test(modelo)), j = await r.json().catch(() => ({}));
+  if (!r.ok && r.status === 400 && /think/i.test((j.error && j.error.message) || '') && !iaPensarSempre){
+    iaPensarSempre = true; r = await pedir(true); j = await r.json().catch(() => ({}));
+  }
   if (!r.ok){
     const msg = (j.error && j.error.message) || '';
     if (r.status === 429) throw new Error('Limite gratuito do Gemini atingido. Tenta mais tarde.');
@@ -1102,6 +1116,49 @@ function blocoProg(p){
 }
 
 /* ---------- IA: forjar treinos, pedidos ao ferreiro e adaptar o treino ---------- */
+// As indicações do utilizador mandam: o que se percebe nelas (músculos, zonas a evitar, equipamento)
+// filtra a lista antes de chegar à IA, para que ela não consiga escolher fora disso.
+const PERNAS = ['quads', 'post', 'gluteos', 'gemeos', 'adutores', 'abdutores'];
+const IND_MUSC = [
+  [/barriga da perna|panturrilh|gemeos/, ['gemeos']],
+  [/pernas?\b|membros inferiores|tronco inferior|parte de baixo|\binferior/, PERNAS],
+  [/quadricep/, ['quads']], [/posteriores?\b|isquio/, ['post']], [/glute|rabo/, ['gluteos']], [/\badutor/, ['adutores']], [/abdutor/, ['abdutores']],
+  [/peito|peitora/, ['peito']], [/costas|dorsa/, ['dorsais', 'costas']], [/lombar/, ['lombar']], [/ombros?\b|deltoide/, ['ombros']],
+  [/bracos?\b/, ['biceps', 'triceps']], [/bicep/, ['biceps']], [/tricep/, ['triceps']], [/antebraco/, ['antebracos']],
+  [/\bcore\b|abdomina|\babs\b|barriga/, ['abs']], [/trapezio/, ['trapezio']],
+  [/tronco superior|parte de cima|\bsuperior/, ['peito', 'dorsais', 'costas', 'ombros', 'biceps', 'triceps']]
+];
+const IND_EQUIP = [[/halter/, 'halteres'], [/kettlebell|kettle/, 'kettlebell'], [/elastic/, 'elasticos'], [/\bbanco/, 'banco'], [/\brack\b|suporte/, 'rack'],
+  [/elevacoes|barra fixa/, 'elevacoes'], [/\bbarra\b(?! fixa| de elevacoes)/, 'barra'], [/paralelas/, 'paralelas'], [/polia|cabos?\b/, 'cabos']];
+const NEGA = /\b(sem|nao|evita\w*|exceto|excepto|menos|tirando|poupa\w*|doi\w*|dor(es)?|lesa\w*|lesion\w*|magoa\w*)\b/;
+function lerIndicacoes(texto){
+  const r = {musculos: [], evitar: [], equip: [], semEquip: [], corpo: false};
+  const t = String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (!t.trim()) return r;
+  for (const frase of t.split(/[,.;!?\n]|\bmas\b/)){
+    const so = /\b(so|apenas|somente|unicamente|exclusivamente)\b/.test(frase);
+    let resto = frase;
+    for (const [re, ms] of IND_MUSC){
+      const m = resto.match(re); if (!m) continue;
+      const neg = NEGA.test(resto.slice(0, m.index));
+      for (const x of ms) (neg ? r.evitar : r.musculos).push(x);
+      resto = resto.replace(re, ' ');
+    }
+    if (/sem (equipamento|material|pesos)|peso corporal|so (o )?corpo/.test(frase)) r.corpo = true;
+    for (const [re, id] of IND_EQUIP){
+      const m = frase.match(re); if (!m) continue;
+      if (NEGA.test(frase.slice(0, m.index)) || /nao tenho|ocupad/.test(frase)) r.semEquip.push(id); else if (so) r.equip.push(id);
+    }
+  }
+  r.musculos = [...new Set(r.musculos)].filter(m => !r.evitar.includes(m)); r.evitar = [...new Set(r.evitar)];
+  return r;
+}
+function equipComIndicacoes(eq, ind){
+  let e = Array.from(new Set(['corpo', ...eq]));
+  if (ind.corpo) e = ['corpo'];
+  else if (ind.equip.length) e = e.filter(x => x === 'corpo' || ind.equip.includes(x));
+  return e.filter(x => !ind.semEquip.includes(x));
+}
 function poolIA(eq, musculos, alongamentos){
   const pont = e => (e.e ? 40 : 0) + (cfg.favs.includes(e.id) ? 30 : 0) + (TOPO.has(e.id) ? 15 : 0) + (e.m ? 8 : 0) + (e.l === 1 ? 3 : 0);
   const porM = {};
@@ -1143,33 +1200,42 @@ function itensDaIA(lista, validos){
   return itens;
 }
 async function forjarComIA(){
-  const eq = Array.from(new Set(['corpo', ...equipHoje()]));
-  const tipo = rapido.especial || (rapido.musculos.length ? 'musculos' : (TIPOS[rapido.tipo] && rapido.tipo !== 'livre' ? rapido.tipo : 'auto')), alvo = tipo === 'musculos' ? rapido.musculos : (TIPOS[tipo] && TIPOS[tipo].plano && TIPOS[tipo].plano.length ? Array.from(new Set(TIPOS[tipo].plano.map(s => s.split(':')[0]))) : null);
-  const pool = poolIA(eq, rapido.pedido && !rapido.musculos.length ? null : alvo, !!rapido.pedido);
+  const pedido = String(rapido.pedido || '').trim(), ind = lerIndicacoes(pedido);
+  const eq = equipComIndicacoes(equipHoje(), ind);
+  const mus = ind.musculos.length ? ind.musculos : rapido.musculos;
+  const tipo = rapido.especial || (mus.length ? 'musculos' : (TIPOS[rapido.tipo] && rapido.tipo !== 'livre' ? rapido.tipo : 'auto')), alvo = tipo === 'musculos' ? mus : (TIPOS[tipo] && TIPOS[tipo].plano && TIPOS[tipo].plano.length ? Array.from(new Set(TIPOS[tipo].plano.map(s => s.split(':')[0]))) : null);
+  let pool = poolIA(eq, pedido && !mus.length ? null : alvo, !!pedido);
+  if (ind.evitar.length) pool = pool.filter(e => !ind.evitar.includes(e.p[0]));
+  if (!pool.length) throw new Error('Não há exercícios que cumpram as indicações com o teu equipamento.');
   const escolhidos = (rapido.escolhidos || []).filter(id => EXI[id]);
   for (const id of escolhidos) if (!pool.some(e => e.id === id)) pool.push(EXI[id]);
-  const pedidoTipo = tipo === 'longevidade' ? 'saúde e longevidade: força funcional, equilíbrio, pega, postura e mobilidade; usa os exercícios forja_* quando fizerem sentido' : tipo === 'auto' ? 'decide tu, tendo em conta os músculos que estão há mais tempo sem treino' : tipo === 'musculos' ? 'músculos: ' + rapido.musculos.map(m => MUSC[m]).join(', ') : TIPOS[tipo].nome + ' (' + TIPOS[tipo].sub + ')';
+  const pedidoTipo = tipo === 'longevidade' ? 'saúde e longevidade: força funcional, equilíbrio, pega, postura e mobilidade; usa os exercícios forja_* quando fizerem sentido' : tipo === 'auto' ? (pedido ? 'o que as indicações do utilizador pedirem' : 'decide tu, tendo em conta os músculos que estão há mais tempo sem treino') : tipo === 'musculos' ? 'só estes músculos: ' + mus.map(m => MUSC[m]).join(', ') : TIPOS[tipo].nome + ' (' + TIPOS[tipo].sub + ')';
   const prompt = `És o ferreiro da app Forja, um treinador de força experiente. Monta o treino de hoje.
-${contextoUtilizador()}
+${pedido ? `INDICAÇÕES DO UTILIZADOR (obrigatórias): "${pedido}"
+Cumpre estas indicações à letra. Se entrarem em conflito com o tipo de treino, o tempo, o histórico ou qualquer outra regra, as indicações ganham sempre.
+` : ''}${contextoUtilizador()}
 Tempo disponível: ${rapido.duracao} minutos. Tipo de treino: ${pedidoTipo}.
-${rapido.pedido ? `Pedido do utilizador (tem prioridade sobre o tipo e o tempo): "${rapido.pedido}"` : ''}
 ${escolhidos.length ? `O utilizador já escolheu estes exercícios, que têm de ficar no treino por esta ordem: ${escolhidos.map(id => id + ' (' + EXI[id].n + ')').join('; ')}. Acrescenta outros só se couberem no tempo disponível.` : ''}
 Exercícios disponíveis com o equipamento de hoje (id|nome|músculos|tipo|nível):
 ${pool.map(linhaPool).join('\n')}
 ${REGRAS_JSON}
-Responde só com JSON: {"nome":"nome curto do treino","nota":"1 ou 2 frases a explicar a escolha","exercicios":[{"id":"...","series":4,"reps":"8–10","descanso":120,"nota":"dica curta opcional"}]}`;
+${pedido ? 'Antes de responderes, confirma que cada exercício cumpre as indicações do utilizador e tira os que não cumprem. Na nota, diz em poucas palavras como as seguiste.\n' : ''}Responde só com JSON: {"nome":"nome curto do treino","nota":"1 ou 2 frases a explicar a escolha","exercicios":[{"id":"...","series":4,"reps":"8–10","descanso":120,"nota":"dica curta opcional"}]}`;
   const o = lerJSON(await geminiTexto(prompt));
   let itens = itensDaIA(o.exercicios, new Set(pool.map(e => e.id)));
   if (escolhidos.length){ const deles = escolhidos.map(id => itens.find(it => it.id === id) || novoItem(EXI[id])); itens = deles.concat(itens.filter(it => !escolhidos.includes(it.id))); }
   if (itens.length < 2 && !escolhidos.length) throw new Error('A IA não montou um treino válido.');
   return {nome: String(o.nome || 'Treino do ferreiro').slice(0, 40), nota: String(o.nota || '').slice(0, 320), itens};
 }
-function folhaAforjar(titulo){
+function folhaAforjar(titulo, semIA){
   abrirFolha(`<div class="col centro" style="padding:30px 0 20px"><div class="aforjar"><i></i><i></i><i></i></div><h2>${titulo}</h2>
-    <p class="suave peq" style="margin:0">O ferreiro está a escolher o ferro. Demora uns segundos.</p></div>`, 'aforjar');
+    <p class="suave peq" style="margin:0">O ferreiro está a escolher o ferro. Demora uns segundos.</p>
+    <div id="aforjarLento" class="col centro" hidden><p class="peq" style="margin:6px 0 0;color:var(--ouro)">Está a demorar mais do que o costume.</p>
+      <button class="btn" data-acao="${semIA ? 'semIA' : 'fecharFolha'}">${semIA ? 'Montar sem IA' : 'Cancelar'}</button></div></div>`, 'aforjar');
+  clearTimeout(tLento); tLento = setTimeout(() => { const el = $('#aforjarLento'); if (el && folhaAtual === 'aforjar') el.hidden = false; }, 12000);
 }
 async function gerarIA(){
-  folhaAforjar('A forjar o teu treino');
+  const caixa = $('#rPedido'); if (caixa) rapido.pedido = caixa.value.trim();
+  folhaAforjar('A forjar o teu treino', true);
   try {
     const r = await forjarComIA();
     if (folhaAtual !== 'aforjar') return;
@@ -1178,7 +1244,7 @@ async function gerarIA(){
     folhaPlano();
   } catch(e){
     if (folhaAtual !== 'aforjar') return;
-    toast(e.message + ' Montei o treino sem IA.', 4000);
+    toast(e.message + ' Montei o treino sem IA' + (rapido.pedido ? ', a seguir as tuas indicações.' : '.'), 4500);
     if (planoPorRegras()) folhaPlano();
   }
 }
@@ -1224,7 +1290,7 @@ function ouvir(btn, alvo, depois){
   if (reconhecimento){ reconhecimento.stop(); return; }
   const r = reconhecimento = new SR(); r.lang = 'pt-PT'; r.interimResults = true;
   let ouviu = false; btn.classList.add('a-ouvir');
-  r.onresult = e => { alvo.value = Array.from(e.results).map(x => x[0].transcript).join(''); ouviu = true; };
+  r.onresult = e => { alvo.value = Array.from(e.results).map(x => x[0].transcript).join(''); ouviu = true; alvo.dispatchEvent(new Event('input', {bubbles: true})); };
   r.onerror = e => toast(e.error === 'not-allowed' ? 'Sem permissão para usar o microfone.' : e.error === 'no-speech' ? 'Não ouvi nada. Tenta outra vez.' : 'Não consegui ouvir. Tenta outra vez.');
   r.onend = () => { reconhecimento = null; btn.classList.remove('a-ouvir'); if (ouviu && alvo.value.trim() && depois) depois(); };
   try { r.start(); } catch(e){ reconhecimento = null; btn.classList.remove('a-ouvir'); }
@@ -1914,6 +1980,7 @@ const ACOES = {
   falar(a){ const alvo = $('#' + a.dataset.alvo); if (alvo) ouvir(a, alvo, a.dataset.depois ? () => ACOES[a.dataset.depois](a) : null); },
   irPerfil(){ irPara('vPerfil'); },
   adaptar(){ folhaAdaptar(); },
+  semIA(){ cancelarIA(); if (planoPorRegras()) folhaPlano(); },
   sugAdaptar(a){ const t = $('#adaptarTxt'); t.value = (t.value.trim() ? t.value.trim() + '. ' : '') + a.dataset.v; a.classList.add('on'); },
   async enviarAdaptar(){
     const txt = ($('#adaptarTxt') || {}).value || ''; if (!txt.trim()) return toast('Diz ao ferreiro o que mudou.');
