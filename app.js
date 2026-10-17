@@ -1491,7 +1491,7 @@ function mostrarCapa(forcar){
   golpes = 0; capaAberta = true;
   const c = $('#capa'); c.classList.remove('sair'); c.hidden = false; renderCapa();
   requestAnimationFrame(() => { geoCapa(); Faiscas.emissor(emissorCapa); });
-  $('#faiscas').style.zIndex = 46;
+  $('#faiscas').style.zIndex = 46; $('#faiscas').classList.add('na-capa');
 }
 function renderCapa(){
   const h = new Date().getHours(), ola = h < 6 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 20 ? 'Boa tarde' : 'Boa noite';
@@ -1500,6 +1500,7 @@ function renderCapa(){
   const sug = sugestao();
   capaF = f;
   $('#capa').innerHTML = `
+    <div id="cSombra" class="capa-sombra" aria-hidden="true"></div>
     <div id="cLuz"></div>
     <div class="capa-topo"><div class="capa-marca quente">FORJA</div>
       <h1 class="capa-ola">${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h1>
@@ -1509,7 +1510,7 @@ function renderCapa(){
       <h2 class="capa-peca">${pronta ? 'Lâmina forjada esta semana' : 'A peça da semana'}</h2>
       <p class="suave peq" style="margin:4px 0 0">${feitos} de ${cfg.dias} treinos${pronta ? '. Bom trabalho, ferreiro.' : '. Cada treino molda o ferro até virar lâmina.'}</p>
     </div>
-    <div style="width:min(420px,100%)">
+    <div class="capa-base">
       <div class="infos"><div>Esta semana<b>${feitos}/${cfg.dias}</b></div><div>Este mês<b>${mes} ${mes === 1 ? 'treino' : 'treinos'}</b></div>
         <div>Último treino<b>${dUlt === null ? '—' : dUlt === 0 ? 'hoje' : dUlt === 1 ? 'ontem' : 'há ' + dUlt + ' dias'}</b></div></div>
       <div class="golpes" id="cGolpes"><i></i><i></i><i></i></div>
@@ -1538,6 +1539,8 @@ function impacto(n){
   $('#capa').animate([{transform: 'translate(0,0)'}, {transform: 'translate(-5px,4px)'}, {transform: 'translate(4px,-3px)'}, {transform: 'translate(-2px,1px)'}, {transform: 'translate(0,0)'}], {duration: 200});
   $('#cClarao').animate([{opacity: 1, transform: 'scale(.3)'}, {opacity: 0, transform: `scale(${n === 3 ? 2.6 : 1.7})`}], {duration: n === 3 ? 420 : 260, easing: 'ease-out'});
   $('#cOnda').animate([{opacity: .9, transform: 'scale(.15,.4)'}, {opacity: 0, transform: `scale(${n === 3 ? 2.2 : 1.5},1.1)`}], {duration: 380, easing: 'ease-out'});
+  // O clarão do golpe empurra a escuridão para os cantos e ela volta devagar.
+  $('#cSombra').animate([{opacity: 1}, {opacity: n === 3 ? .2 : .45, offset: .12}, {opacity: 1}], {duration: n === 3 ? 1100 : 650, easing: 'ease-out'});
   const calor = 1 + .14 * n;
   ['#cPeca', '#cPecaBrilho'].forEach(s => { const el = $(s); el.animate([{filter: 'brightness(2.2)'}, {filter: `brightness(${calor})`}], {duration: n === 3 ? 900 : 450, easing: 'ease-out'}); el.style.filter = `brightness(${calor})`; });
   const nf = Math.min(1, capaF + .07 * n), nd = formaPeca(nf);
@@ -1551,7 +1554,7 @@ function impacto(n){
 }
 function fecharCapa(){
   capaAberta = false; Faiscas.emissor(null); const c = $('#capa'); c.classList.add('sair');
-  setTimeout(() => { c.hidden = true; c.innerHTML = ''; $('#faiscas').style.zIndex = ''; forjarPlacas(); }, 520);
+  setTimeout(() => { c.hidden = true; c.innerHTML = ''; $('#faiscas').style.zIndex = ''; $('#faiscas').classList.remove('na-capa'); forjarPlacas(); }, 520);
 }
 // Som de martelo em metal, sintetizado (sem ficheiros de áudio).
 function clang(forte, atraso){
