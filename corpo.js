@@ -48,13 +48,13 @@ const CORPO_COSTAS = [
 const CORPO_CORES = [
   ['#5c5550', '#2c2623'], ['#7a4636', '#2e1c16'], ['#b8461a', '#4e170a'], ['#f2701f', '#7e1e07'], ['#ffbe55', '#dc4c12'], ['#fff8e6', '#ffb347']
 ];
-function corpoSVG(niveis){
+function corpoSVG(niveis, op = {}){
   const n = m => niveis[m] || 0;
   const placa = (m, d) => {
     const k = n(m);
-    return `<g class="musc" data-acao="musculo" data-v="${m}">
+    return `<g class="musc" data-acao="${op.acao || 'musculo'}" data-v="${m}">
       <path d="${d}" fill="url(#cfN0)" stroke="#0a0705" stroke-width="1.3" stroke-linejoin="round"/>
-      ${k ? `<path d="${d}" fill="url(#cfN${k})" class="aquece" style="animation-delay:${(Math.random() * .5).toFixed(2)}s"/>` : ''}
+      ${k ? `<path d="${d}" fill="url(#cfN${k})"${op.anim === false ? '' : ` class="aquece" style="animation-delay:${(Math.random() * .5).toFixed(2)}s"`}/>` : ''}
       <path d="${d}" fill="url(#cfBrilho)"/></g>`;
   };
   const brilhos = lista => lista.filter(([m]) => n(m) >= 3).map(([m, d]) => `<path d="${d}" fill="${n(m) >= 5 ? '#ffd27a' : '#ff7a1c'}" opacity="${.35 + .15 * (n(m) - 3)}" class="brasa-musc"/>`).join('');

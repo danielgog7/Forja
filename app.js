@@ -389,7 +389,7 @@ function renderInicio(){
       <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div></div>
     ${sug ? `<div class="placa brasa"><h2>Sugestão de hoje</h2><p style="margin:0 0 12px"><b>${TIPOS[sug.tipo].nome}</b>: ${esc(sug.motivo)}</p>
       <button class="btn quente" data-acao="usarSugestao" data-v="${sug.tipo}">Gerar este treino</button></div>` : ''}
-    <div class="placa rebites"><h2>Calor muscular</h2><p class="suave mini" style="margin:-4px 0 6px">Cada treino aquece os músculos que trabalhaste; arrefecem com os dias. O que está frio pede ferro. Toca num músculo.</p>
+    <div class="placa rebites"><h2>Calor muscular</h2>
       ${corpoSVG(cm.niveis)}
       <div class="legenda-calor"><span>frio</span><i></i><span>em brasa</span></div>
       <div id="calorInfo" class="calor-info suave peq">${(() => { const frios = MUSC_ESCOLHA.filter(m => !cm.niveis[m]).map(m => MUSC[m]); return frios.length ? `Mais frios: ${frios.slice(0, 4).join(', ')}.` : 'Corpo todo quente. Bom trabalho, ferreiro.'; })()}</div></div>
@@ -400,20 +400,75 @@ function renderInicio(){
 
 /* ---------- Início rápido e plano ---------- */
 let rapido = null;
-function novoRapido(tipo){ rapido = {tipo: tipo || 'auto', duracao: cfg.duracao, equip: cfg.equip.slice(), musculos: [], plano: null, pedido: '', nota: '', aquec: cfg.aquecer !== false, along: cfg.alongar !== false}; }
-function folhaRapido(){
-  const sug = sugestao();
-  abrirFolha(cab('Início rápido') + `<div class="col">
-    <div><h3>Tipo de treino</h3><div class="chips" style="margin-top:8px">${Object.entries(TIPOS).filter(([, t]) => !t.oculto).map(([k, t]) => chip(rapido.tipo === k, 'rTipo', k, t.nome)).join('')}</div>
-      ${rapido.tipo === 'auto' && sug ? `<p class="suave peq" style="margin:8px 0 0">Hoje: <b>${TIPOS[sug.tipo].nome}</b>, ${esc(sug.motivo)}</p>` : ''}
-      ${TIPOS[rapido.tipo].sub ? `<p class="suave peq" style="margin:8px 0 0">${esc(TIPOS[rapido.tipo].sub[0].toUpperCase() + TIPOS[rapido.tipo].sub.slice(1))}.</p>` : ''}
-      ${rapido.tipo === 'musculos' ? `<div class="chips" style="margin-top:10px">${MUSC_ESCOLHA.map(m => chip(rapido.musculos.includes(m), 'rMus', m, MUSC[m])).join('')}</div>` : ''}</div>
-    <div><h3>Tempo disponível</h3><div class="chips" style="margin-top:8px">${[20, 30, 45, 60, 75, 90].map(m => chip(rapido.duracao === m, 'rDur', m, m + ' min')).join('')}</div></div>
-    <div><h3>Equipamento de hoje</h3><div class="chips" style="margin-top:8px">${cfg.equip.filter(x => x !== 'corpo').map(id => chip(rapido.equip.includes(id), 'rEq', id, EQ[id].nome)).join('')}</div></div>
-    ${rapido.tipo !== 'livre' && rapido.tipo !== 'mobilidade' ? `<div><h3>Aquecimento e alongamentos</h3><div class="chips" style="margin-top:8px">${chip(rapido.aquec, 'rAquec', '', 'Aquecimento')}${chip(rapido.along, 'rAlong', '', 'Alongamentos no fim')}</div></div>` : ''}
-    ${cfg.chave && rapido.tipo !== 'livre' && rapido.tipo !== 'mobilidade' ? `<div><h3>Pedido especial (opcional)</h3><div class="linha" style="margin-top:8px"><textarea id="rPedido" data-campo="rPedido" rows="2" placeholder="Ex.: quero focar no peito, dói-me o pulso">${esc(rapido.pedido || '')}</textarea><button class="btn icone" data-acao="falar" data-alvo="rPedido" aria-label="Falar">${IC.mic}</button></div></div>
-      <button class="btn quente grande" data-acao="gerarIA">${IC.ia} Forjar com IA</button><button class="btn" data-acao="gerar">Gerar sem IA (instantâneo)</button>`
-    : `<button class="btn quente grande" data-acao="gerar">${rapido.tipo === 'livre' ? 'Escolher exercícios' : 'Gerar treino'}</button>`}</div>`);
+function novoRapido(tipo){ rapido = {tipo: tipo || 'auto', duracao: cfg.duracao || 60, equip: [], musculos: [], escolhidos: [], especial: null, limite: 40, plano: null, pedido: '', nota: '', aquec: cfg.aquecer !== false, along: cfg.alongar !== false}; }
+const equipHoje = () => rapido && rapido.equip && rapido.equip.length ? rapido.equip : cfg.equip;
+const ATALHOS = [['sug', 'Sugestão'], ['push', 'Empurrar'], ['pull', 'Puxar'], ['pernas', 'Pernas'], ['superior', 'Superior'], ['inferior', 'Inferior'], ['corpo', 'Corpo inteiro'], ['core', 'Core']];
+const musculosDe = t => Array.from(new Set((TIPOS[t].plano || []).map(x => x.split(':')[0])));
+const mesmos = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+function contagemExercicios(){ const c = {}; for (const t of treinos) for (const it of t.itens) if (!it.fase) c[it.id] = (c[it.id] || 0) + 1; return c; }
+// Lista do painel: só exercícios que usam o equipamento escolhido; favoritos, depois os mais feitos, depois o resto.
+function exerciciosRapido(){
+  const sel = rapido.equip; if (!sel.length) return {lista: [], cont: {}};
+  const eq = Array.from(new Set(['corpo', ...sel])), cont = contagemExercicios(), ms = rapido.musculos;
+  const lista = EX.filter(e => ['forca', 'pliometria'].includes(e.c) && podeFazer(e, eq) && (sel.includes('corpo') || e.req.some(r => sel.includes(r)))
+    && (!ms.length || e.p.some(m => ms.includes(m))) && !(cfg.nivel === 1 && e.l === 3))
+    .sort((a, b) => (cfg.favs.includes(b.id) - cfg.favs.includes(a.id)) || ((cont[b.id] || 0) - (cont[a.id] || 0)) || (b.e - a.e) || (a.l - b.l) || a.n.localeCompare(b.n, 'pt'));
+  const fora = rapido.escolhidos.filter(id => EXI[id] && !lista.includes(EXI[id])).map(id => EXI[id]);
+  return {lista: fora.concat(lista), cont};
+}
+const rotuloComecar = () => { const n = rapido.escolhidos.length; return n ? `Começar com ${n} ${n === 1 ? 'exercício' : 'exercícios'}` : 'Começar treino'; };
+function linhaRapido(e, cont){
+  const k = rapido.escolhidos.indexOf(e.id), n = cont[e.id] || 0;
+  return `<div class="item${k >= 0 ? ' escolhido' : ''}" data-acao="rEscolher" data-id="${e.id}"><img class="mini-img" src="${img(e)}" alt="" loading="lazy" data-acao="verEx" data-id="${e.id}" onerror="this.style.visibility='hidden'">
+    <div class="t"><b>${cfg.favs.includes(e.id) ? `<span class="fav-mini">${IC.estrela}</span>` : ''}${esc(e.n)}</b><span>${esc(musculosTxt(e))}${n ? ` · feito ${n}×` : ''}</span></div><span class="ordem">${k >= 0 ? k + 1 : ''}</span></div>`;
+}
+function folhaRapido(manter){
+  const cx = $('#folhaCaixa'), st = manter && !$('#folha').hidden ? cx.scrollTop : 0;
+  const sug = sugestao(), ms = rapido.musculos, niveis = Object.fromEntries(ms.map(m => [m, 5]));
+  const meus = Array.from(new Set(['corpo', ...cfg.equip])).filter(id => EQ[id]);
+  const ex = exerciciosRapido();
+  const resumo = rapido.especial ? TIPOS[rapido.especial].sub[0].toUpperCase() + TIPOS[rapido.especial].sub.slice(1) + '.'
+    : ms.length ? ms.map(m => MUSC[m]).join(', ') + '.' : 'Nenhum escolhido: o ferreiro trata do que está mais frio.';
+  abrirFolha(cab('Acender a forja') + `<div class="col painel-rapido">
+    <section><h3>Tempo de treino</h3><div class="chips">${[20, 30, 45, 60, 75, 90].map(m => chip(rapido.duracao === m, 'rDur', m, m === 60 ? '1 hora' : m + ' min')).join('')}</div></section>
+    <section><h3>O que queres treinar</h3>
+      <div class="chips">${ATALHOS.map(([k, t]) => { const tipo = k === 'sug' ? (sug || {tipo: 'corpo'}).tipo : k; return chip(!rapido.especial && ms.length && mesmos(ms, musculosDe(tipo)), 'rAtalho', k, k === 'sug' ? `Sugestão: ${TIPOS[tipo].nome}` : t); }).join('')}
+        ${chip(rapido.especial === 'longevidade', 'rEspecial', 'longevidade', 'Longevidade')}${chip(rapido.especial === 'mobilidade', 'rEspecial', 'mobilidade', 'Mobilidade')}</div>
+      ${corpoSVG(niveis, {acao: 'rMusculo', anim: false})}
+      <p class="resumo-musc">${esc(resumo)}</p></section>
+    <section><h3>Equipamento</h3><div class="grelha">${meus.map(id => tileEq(EQ[id], rapido.equip.includes(id), 'rEq')).join('')}</div>
+      <p class="apagado mini" style="margin:8px 0 0">Equipamento novo? Acrescenta-o em Perfil, O meu ginásio.</p></section>
+    ${rapido.equip.length ? `<section><div class="linha entre"><h3>Exercícios</h3><span class="suave peq">${ex.lista.length} disponíveis</span></div>
+      <div class="lista" id="rLista">${ex.lista.slice(0, rapido.limite).map(e => linhaRapido(e, ex.cont)).join('') || '<div class="vazio">Nenhum exercício com esta escolha.</div>'}</div>
+      ${ex.lista.length > rapido.limite ? '<button class="btn fantasma" data-acao="rMais" style="width:100%">Mostrar mais</button>' : ''}</section>` : ''}
+    ${cfg.chave ? `<section><h3>Indicações para o ferreiro</h3><div class="linha"><textarea id="rPedido" data-campo="rPedido" rows="2" placeholder="Ex.: quero focar no peito, dói-me o pulso">${esc(rapido.pedido || '')}</textarea><button class="btn icone" data-acao="falar" data-alvo="rPedido" aria-label="Falar">${IC.mic}</button></div></section>` : ''}
+    <div class="chips">${chip(rapido.aquec, 'rAquec', '', 'Aquecimento')}${chip(rapido.along, 'rAlong', '', 'Alongamentos no fim')}</div>
+    <div class="col" style="gap:8px"><button class="btn quente grande" id="rComecar" data-acao="rComecar">${rotuloComecar()}</button>
+      ${cfg.chave ? `<button class="btn" data-acao="gerarIA">${IC.ia} Pedir ao ferreiro</button>` : ''}</div></div>`, 'rapido');
+  if (st) cx.scrollTop = st;
+}
+function atualizarEscolhidos(){
+  document.querySelectorAll('#rLista [data-acao="rEscolher"]').forEach(el => { const n = rapido.escolhidos.indexOf(el.dataset.id); el.classList.toggle('escolhido', n >= 0); el.querySelector('.ordem').textContent = n >= 0 ? n + 1 : ''; });
+  const b = $('#rComecar'); if (b) b.textContent = rotuloComecar();
+}
+const nomeMusculos = ms => ms.length > 3 ? ms.slice(0, 3).map(m => MUSC[m]).join(' + ') + '…' : ms.map(m => MUSC[m]).join(' + ');
+// Monta o plano pelas regras, a partir do que está escolhido no painel.
+function planoPorRegras(){
+  const eq = equipHoje(), d = rapido.duracao;
+  if (rapido.escolhidos.length){ rapido.real = 'livre'; rapido.nome = rapido.musculos.length ? nomeMusculos(rapido.musculos) : 'Treino à medida'; rapido.plano = rapido.escolhidos.map(id => novoItem(EXI[id])); }
+  else if (rapido.especial){ rapido.real = rapido.especial; rapido.nome = TIPOS[rapido.especial].nome; rapido.plano = rapido.especial === 'longevidade' ? gerarLongevidade(d, eq) : gerarMobilidade(d, eq); }
+  else if (rapido.musculos.length){ rapido.real = 'musculos'; rapido.nome = nomeMusculos(rapido.musculos); rapido.plano = gerarTreino({tipo: 'musculos', musculos: rapido.musculos, duracao: d, equip: eq}); }
+  else { const t = (sugestao() || {tipo: 'corpo'}).tipo; rapido.real = t; rapido.nome = TIPOS[t].nome; rapido.plano = gerarTreino({tipo: t, duracao: d, equip: eq}); }
+  rapido.nota = '';
+  if (!rapido.plano.length){ toast('Não encontrei exercícios com esta escolha. Escolhe mais equipamento.'); return false; }
+  return true;
+}
+function comecarDireto(){
+  if (!planoPorRegras()) return;
+  const mob = rapido.real === 'mobilidade', eq = equipHoje();
+  rapido.fasesAq = rapido.aquec && !mob ? construirAquecimento(rapido.plano, eq) : [];
+  rapido.fasesAl = rapido.along && !mob ? construirAlongamentos(rapido.plano, eq) : [];
+  comecar();
 }
 function nomeTreino(tipo){ return tipo === 'musculos' ? rapido.musculos.map(m => MUSC[m]).join(' + ') : TIPOS[tipo].nome; }
 function gerar(){
@@ -422,15 +477,15 @@ function gerar(){
   rapido.real = rapido.tipo === 'auto' ? (sugestao() || {tipo: 'corpo'}).tipo : rapido.tipo;
   rapido.nome = nomeTreino(rapido.real);
   rapido.nota = '';
-  rapido.plano = rapido.real === 'longevidade' ? gerarLongevidade(rapido.duracao, rapido.equip) : rapido.real === 'mobilidade' ? gerarMobilidade(rapido.duracao, rapido.equip)
-    : gerarTreino({tipo: rapido.real, duracao: rapido.duracao, equip: rapido.equip, musculos: rapido.musculos});
+  rapido.plano = rapido.real === 'longevidade' ? gerarLongevidade(rapido.duracao, equipHoje()) : rapido.real === 'mobilidade' ? gerarMobilidade(rapido.duracao, equipHoje())
+    : gerarTreino({tipo: rapido.real, duracao: rapido.duracao, equip: equipHoje(), musculos: rapido.musculos});
   if (!rapido.plano.length && rapido.tipo !== 'livre') toast('Com este equipamento não encontrei exercícios. Ativa mais equipamento.');
   folhaPlano();
 }
 function folhaPlano(){
   const p = rapido.plano, mob = (rapido.real || rapido.tipo) === 'mobilidade';
-  rapido.fasesAq = rapido.aquec && !mob && p.length ? construirAquecimento(p, rapido.equip) : [];
-  rapido.fasesAl = rapido.along && !mob && p.length ? construirAlongamentos(p, rapido.equip) : [];
+  rapido.fasesAq = rapido.aquec && !mob && p.length ? construirAquecimento(p, equipHoje()) : [];
+  rapido.fasesAl = rapido.along && !mob && p.length ? construirAlongamentos(p, equipHoje()) : [];
   const fase = (titulo, lista) => lista.length ? `<h3 class="sec-treino">${titulo}</h3><div class="lista">${lista.map(it => { const ex = EXI[it.id]; return `<div class="item compacto" data-acao="verEx" data-id="${ex.id}">
       <img class="mini-img" src="${img(ex)}" alt="" onerror="this.style.visibility='hidden'"><div class="t"><b>${esc(ex.n)}</b><span>${it.series.length > 1 ? it.series.length + ' × ' : ''}${esc(it.alvo)}</span></div></div>`; }).join('')}</div>` : '';
   const todos = [...rapido.fasesAq, ...p, ...rapido.fasesAl];
@@ -445,7 +500,7 @@ function folhaPlano(){
       ${it.fase ? '' : `<button class="btn icone" data-acao="pTrocar" data-i="${i}" aria-label="Trocar">${IC.trocar}</button>`}
       <button class="btn icone" data-acao="pTirar" data-i="${i}" aria-label="Tirar">${IC.x}</button></div>`; }).join('') || '<div class="vazio">Ainda sem exercícios. Acrescenta os que quiseres.</div>'}</div>
     ${fase('Alongamentos', rapido.fasesAl)}
-    <div class="botoes" style="margin-top:12px"><button class="btn" data-acao="pAdicionar">${IC.mais} Exercício</button>${rapido.tipo !== 'livre' && !rapido.modelo ? `<button class="btn" data-acao="${rapido.nota && cfg.chave ? 'gerarIA' : 'gerar'}">Gerar outro</button>` : ''}</div>
+    <div class="botoes" style="margin-top:12px"><button class="btn" data-acao="pAdicionar">${IC.mais} Exercício</button>${rapido.tipo !== 'livre' && !rapido.modelo ? `<button class="btn" data-acao="${rapido.nota && cfg.chave ? 'gerarIA' : 'pOutro'}">Gerar outro</button>` : ''}</div>
     <div class="botoes" style="margin-top:6px">${rapido.modelo ? '<button class="btn fantasma perigo" data-acao="apagarModelo">Apagar modelo</button>' : `<button class="btn fantasma" data-acao="guardarModelo" ${p.length ? '' : 'disabled'}>Guardar como modelo</button>`}</div>
     <button class="btn quente grande" style="margin-top:8px" data-acao="comecar" ${p.length ? '' : 'disabled'}>Começar treino</button>`, 'plano');
 }
@@ -470,7 +525,7 @@ function folhaSeletor(destino, i){
   listaSeletor();
 }
 function listaSeletor(){
-  const eq = Array.from(new Set(['corpo', ...(sel.destino === 'plano' ? rapido.equip : cfg.equip)])), q = norm(sel.q);
+  const eq = Array.from(new Set(['corpo', ...(sel.destino === 'plano' ? equipHoje() : cfg.equip)])), q = norm(sel.q);
   const r = EX.filter(e => podeFazer(e, eq) && (!sel.mus || e.p.includes(sel.mus)) && (!sel.cat || q || e.c === sel.cat) && (!q || norm(e.n).includes(q) || norm(e.en).includes(q)))
     .sort((a, b) => (cfg.favs.includes(b.id) - cfg.favs.includes(a.id)) || (b.e - a.e) || (a.c === 'forca' ? -1 : 0) - (b.c === 'forca' ? -1 : 0) || a.n.localeCompare(b.n, 'pt'));
   $('#selLista').innerHTML = r.slice(0, 80).map(e => sel.destino === 'multi' ? linhaSel(e) : linhaEx(e, '', 'selEscolher')).join('') + (r.length > 80 ? `<p class="suave peq centro">Mais ${r.length - 80}: escreve para filtrar.</p>` : '') || '<div class="vazio">Nada encontrado.</div>';
@@ -751,7 +806,7 @@ function renderPerfil(){
       <div><h3>Nível</h3><div class="chips" style="margin-top:8px">${Object.entries(NIVEIS).map(([k, v]) => chip(cfg.nivel === +k, 'pNiv', k, v[0])).join('')}</div></div>
       <div><h3>Treinos por semana</h3><div class="chips" style="margin-top:8px">${[2, 3, 4, 5, 6].map(n => chip(cfg.dias === n, 'pDias', n, n)).join('')}</div></div>
       <div><h3>Duração habitual</h3><div class="chips" style="margin-top:8px">${[30, 45, 60, 75, 90].map(n => chip(cfg.duracao === n, 'pDur', n, n + ' min')).join('')}</div></div></div>
-    <div class="placa rebites"><h2>O meu ginásio</h2><p class="suave peq" style="margin:-4px 0 12px">Toca para ligar ou desligar. Os treinos só usam o que está aceso.</p>
+    <div class="placa rebites"><h2>O meu ginásio</h2><p class="suave peq" style="margin:-4px 0 12px">O equipamento que tens em casa. É este que aparece para escolheres ao acender a forja.</p>
       <div class="grelha">${EQUIP.filter(e => e.id !== 'corpo').map(e => tileEq(e, cfg.equip.includes(e.id), 'pEq')).join('')}</div></div>
     <div class="placa rebites col"><h2>Aquecimento e alongamentos</h2><p class="suave peq" style="margin:0">Acrescentados ao início e ao fim de cada treino. Podes mudar antes de começar.</p>
       <div class="chips">${chip(cfg.aquecer !== false, 'pAquecer', '', 'Aquecimento')}${chip(cfg.alongar !== false, 'pAlongar', '', 'Alongamentos no fim')}</div></div>
@@ -1020,21 +1075,25 @@ function itensDaIA(lista, validos){
   return itens;
 }
 async function forjarComIA(){
-  const eq = Array.from(new Set(['corpo', ...rapido.equip]));
-  const tipo = rapido.tipo, alvo = tipo === 'musculos' ? rapido.musculos : (TIPOS[tipo] && TIPOS[tipo].plano && TIPOS[tipo].plano.length ? Array.from(new Set(TIPOS[tipo].plano.map(s => s.split(':')[0]))) : null);
-  const pool = poolIA(eq, rapido.pedido ? null : alvo, !!rapido.pedido);
+  const eq = Array.from(new Set(['corpo', ...equipHoje()]));
+  const tipo = rapido.especial || (rapido.musculos.length ? 'musculos' : (TIPOS[rapido.tipo] && rapido.tipo !== 'livre' ? rapido.tipo : 'auto')), alvo = tipo === 'musculos' ? rapido.musculos : (TIPOS[tipo] && TIPOS[tipo].plano && TIPOS[tipo].plano.length ? Array.from(new Set(TIPOS[tipo].plano.map(s => s.split(':')[0]))) : null);
+  const pool = poolIA(eq, rapido.pedido && !rapido.musculos.length ? null : alvo, !!rapido.pedido);
+  const escolhidos = (rapido.escolhidos || []).filter(id => EXI[id]);
+  for (const id of escolhidos) if (!pool.some(e => e.id === id)) pool.push(EXI[id]);
   const pedidoTipo = tipo === 'longevidade' ? 'saúde e longevidade: força funcional, equilíbrio, pega, postura e mobilidade; usa os exercícios forja_* quando fizerem sentido' : tipo === 'auto' ? 'decide tu, tendo em conta os músculos que estão há mais tempo sem treino' : tipo === 'musculos' ? 'músculos: ' + rapido.musculos.map(m => MUSC[m]).join(', ') : TIPOS[tipo].nome + ' (' + TIPOS[tipo].sub + ')';
   const prompt = `És o ferreiro da app Forja, um treinador de força experiente. Monta o treino de hoje.
 ${contextoUtilizador()}
 Tempo disponível: ${rapido.duracao} minutos. Tipo de treino: ${pedidoTipo}.
 ${rapido.pedido ? `Pedido do utilizador (tem prioridade sobre o tipo e o tempo): "${rapido.pedido}"` : ''}
+${escolhidos.length ? `O utilizador já escolheu estes exercícios, que têm de ficar no treino por esta ordem: ${escolhidos.map(id => id + ' (' + EXI[id].n + ')').join('; ')}. Acrescenta outros só se couberem no tempo disponível.` : ''}
 Exercícios disponíveis com o equipamento de hoje (id|nome|músculos|tipo|nível):
 ${pool.map(linhaPool).join('\n')}
 ${REGRAS_JSON}
 Responde só com JSON: {"nome":"nome curto do treino","nota":"1 ou 2 frases a explicar a escolha","exercicios":[{"id":"...","series":4,"reps":"8–10","descanso":120,"nota":"dica curta opcional"}]}`;
   const o = lerJSON(await geminiTexto(prompt));
-  const itens = itensDaIA(o.exercicios, new Set(pool.map(e => e.id)));
-  if (itens.length < 2) throw new Error('A IA não montou um treino válido.');
+  let itens = itensDaIA(o.exercicios, new Set(pool.map(e => e.id)));
+  if (escolhidos.length){ const deles = escolhidos.map(id => itens.find(it => it.id === id) || novoItem(EXI[id])); itens = deles.concat(itens.filter(it => !escolhidos.includes(it.id))); }
+  if (itens.length < 2 && !escolhidos.length) throw new Error('A IA não montou um treino válido.');
   return {nome: String(o.nome || 'Treino do ferreiro').slice(0, 40), nota: String(o.nota || '').slice(0, 320), itens};
 }
 function folhaAforjar(titulo){
@@ -1042,18 +1101,17 @@ function folhaAforjar(titulo){
     <p class="suave peq" style="margin:0">O ferreiro está a escolher o ferro. Demora uns segundos.</p></div>`, 'aforjar');
 }
 async function gerarIA(){
-  if (rapido.tipo === 'musculos' && !rapido.musculos.length) return toast('Escolhe pelo menos um músculo.');
   folhaAforjar('A forjar o teu treino');
   try {
     const r = await forjarComIA();
     if (folhaAtual !== 'aforjar') return;
     rapido.plano = r.itens; rapido.nome = r.nome; rapido.nota = r.nota;
-    rapido.real = rapido.tipo === 'auto' || rapido.tipo === 'livre' ? (rapido.pedido ? 'ia' : (sugestao() || {tipo: 'corpo'}).tipo) : rapido.tipo;
+    rapido.real = rapido.especial || (rapido.musculos.length ? 'musculos' : rapido.pedido ? 'ia' : TIPOS[rapido.tipo] && (TIPOS[rapido.tipo].plano || []).length ? rapido.tipo : (sugestao() || {tipo: 'corpo'}).tipo);
     folhaPlano();
   } catch(e){
     if (folhaAtual !== 'aforjar') return;
-    toast(e.message + ' Usei o gerador sem IA.', 4000);
-    rapido.nota = ''; gerar();
+    toast(e.message + ' Montei o treino sem IA.', 4000);
+    if (planoPorRegras()) folhaPlano();
   }
 }
 function pedirAoFerreiro(texto){
@@ -1527,12 +1585,20 @@ const ACOES = {
   fecharFolha, irTreino: () => { fecharFolha(); irPara('vTreino'); },
   acender(){ if (!rapido) novoRapido(); folhaRapido(); },
   usarSugestao(a){ novoRapido(a.dataset.v); gerar(); },
-  rTipo(a){ rapido.tipo = a.dataset.v; folhaRapido(); }, rDur(a){ rapido.duracao = +a.dataset.v; folhaRapido(); },
-  rEq(a){ rapido.equip = alterna(rapido.equip, a.dataset.v); folhaRapido(); }, rMus(a){ rapido.musculos = alterna(rapido.musculos, a.dataset.v); folhaRapido(); },
+  rDur(a){ rapido.duracao = +a.dataset.v; folhaRapido(true); },
+  rEq(a){ rapido.equip = alterna(rapido.equip, a.dataset.v); rapido.limite = 40; folhaRapido(true); },
+  rAtalho(a){ const t = a.dataset.v === 'sug' ? (sugestao() || {tipo: 'corpo'}).tipo : a.dataset.v, ms = musculosDe(t);
+    rapido.especial = null; rapido.musculos = mesmos(rapido.musculos, ms) ? [] : ms; rapido.limite = 40; folhaRapido(true); },
+  rEspecial(a){ rapido.especial = rapido.especial === a.dataset.v ? null : a.dataset.v; if (rapido.especial) rapido.musculos = []; folhaRapido(true); },
+  rMusculo(a){ rapido.especial = null; rapido.musculos = alterna(rapido.musculos, a.dataset.v); rapido.limite = 40; folhaRapido(true); },
+  rEscolher(a){ const id = a.dataset.id, k = rapido.escolhidos.indexOf(id); if (k >= 0) rapido.escolhidos.splice(k, 1); else rapido.escolhidos.push(id); vibrar(10); atualizarEscolhidos(); },
+  rMais(){ rapido.limite += 40; folhaRapido(true); },
+  rComecar(){ comecarDireto(); },
   gerar(a){ gerar(); if (a) Faiscas.de(a, 14); },
-  pTrocar(a){ if (trocarNoPlano(rapido.plano, +a.dataset.i, rapido.equip)) folhaPlano(); },
+  pTrocar(a){ if (trocarNoPlano(rapido.plano, +a.dataset.i, equipHoje())) folhaPlano(); },
   pTirar(a){ rapido.plano.splice(+a.dataset.i, 1); folhaPlano(); },
   pAdicionar(){ folhaSeletor('plano'); },
+  pOutro(){ if (planoPorRegras()) folhaPlano(); },
   comecar,
   selMus(a){ sel.mus = a.dataset.v; a.parentNode.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === a)); listaSeletor(); },
   selEscolher(a){
@@ -1564,7 +1630,7 @@ const ACOES = {
   dMenos(){ descanso.fim -= 15000; descanso.total = Math.max(1000, descanso.total - 15000); LS.set('descanso', descanso); desenharDescanso(); },
   dMais(){ descanso.fim = Math.max(descanso.fim, Date.now()) + 15000; descanso.total += 15000; descanso.avisado = false; LS.set('descanso', descanso); desenharDescanso(); },
   dSaltar: pararDescanso,
-  verEx(a){ const f = folhaAtual; voltarFolha = f === 'plano' ? folhaPlano : f.startsWith('treino:') ? () => folhaTreino(f.slice(7)) : null; folhaEx(a.dataset.id); },
+  verEx(a){ const f = folhaAtual; voltarFolha = f === 'plano' ? folhaPlano : f === 'rapido' ? () => folhaRapido() : f.startsWith('treino:') ? () => folhaTreino(f.slice(7)) : null; folhaEx(a.dataset.id); },
   voltarFolha(){ const f = voltarFolha; voltarFolha = null; if (f) f(); },
   fav(a){ cfg.favs = alterna(cfg.favs, a.dataset.id); guardarCfg(true); folhaEx(a.dataset.id); if (vista === 'vExercicios') renderExercicios(); },
   addAoTreino(a){ const it = novoItem(EXI[a.dataset.id]); preencherSugestoes([it]); inserirNoTreino(it); guardarAtivo(true); fecharFolha(); irPara('vTreino'); toast('Adicionado ao treino.'); },
@@ -1615,7 +1681,7 @@ const ACOES = {
   treinarMusculo(a){ novoRapido('musculos'); rapido.musculos = [a.dataset.v]; folhaRapido(); },
   montar(){ novoRapido('livre'); folhaSeletor('multi'); },
   tipoDireto(a){ novoRapido(a.dataset.v); gerar(); },
-  rAquec(){ rapido.aquec = !rapido.aquec; folhaRapido(); }, rAlong(){ rapido.along = !rapido.along; folhaRapido(); },
+  rAquec(){ rapido.aquec = !rapido.aquec; folhaRapido(true); }, rAlong(){ rapido.along = !rapido.along; folhaRapido(true); },
   pAquec(){ rapido.aquec = !rapido.aquec; folhaPlano(); }, pAlong(){ rapido.along = !rapido.along; folhaPlano(); },
   pAquecer(){ cfg.aquecer = cfg.aquecer === false; guardarCfg(true); renderPerfil(); }, pAlongar(){ cfg.alongar = cfg.alongar === false; guardarCfg(true); renderPerfil(); },
   feitoFase(a){

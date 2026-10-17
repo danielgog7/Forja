@@ -279,6 +279,16 @@ textarea { resize: vertical; min-height: 58px; }
 .legenda-calor { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--apagado); margin-top: 4px; }
 .legenda-calor i { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #3a3330, #6a3a2a, #b8461a, #f2701f, #ffbe55, #fff8e6); box-shadow: 0 0 8px rgba(255,120,30,.25); }
 .calor-info { margin-top: 10px; min-height: 34px; }
+/* Painel Acender a forja */
+.painel-rapido > section > h3 { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; color: var(--chama); }
+.painel-rapido > section > h3::after, .painel-rapido > section > .linha > h3::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #6b3a18, rgba(107,58,24,0)); }
+.painel-rapido > section > .linha { margin-bottom: 10px; }
+.painel-rapido > section > .linha > h3 { display: flex; align-items: center; gap: 10px; color: var(--chama); flex: 1; margin-right: 10px; }
+.painel-rapido .corpo { margin-top: 10px; }
+.resumo-musc { margin: 6px 0 0; text-align: center; font-size: 13px; color: var(--ouro); }
+.painel-rapido .grelha { grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); }
+.fav-mini { color: var(--ouro); display: inline-block; width: 14px; height: 14px; margin-right: 4px; vertical-align: -2px; }
+.fav-mini svg { width: 14px; height: 14px; fill: currentColor; }
 @media (prefers-reduced-motion: reduce) { .capa-dica, #capa .luzFogo { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .corpo .aquece, .corpo .brasa-musc { animation: none; } }
 @media (prefers-reduced-motion: reduce) { #lareira, .brasas i.acesa, #descanso.pronto, .placa.brasa::after, .opcao.on::after, .placa.acende::before { animation: none; } }
