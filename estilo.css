@@ -99,7 +99,7 @@ section.vista { display: flex; flex-direction: column; gap: 14px; animation: sur
 
 /* Campos */
 label.campo { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--suave); }
-input[type=text], input[type=password], input[type=number], input[type=search], select, textarea {
+input[type=text], input[type=password], input[type=number], input[type=search], input[type=date], select, textarea {
   background: #120d0a; border: 1px solid var(--aresta); border-radius: 10px; padding: 11px 12px; color: var(--texto); width: 100%; outline: none; }
 input:focus, select:focus, textarea:focus { border-color: var(--chama); box-shadow: 0 0 0 3px rgba(255,140,40,.15); }
 details > summary { cursor: pointer; color: var(--suave); list-style: none; }
@@ -109,7 +109,7 @@ details > summary::-webkit-details-marker { display: none; }
 nav#nav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
   background: linear-gradient(180deg, rgba(22,16,12,.92), rgba(12,8,6,.98)); border-top: 1px solid var(--aresta); backdrop-filter: blur(8px);
   display: flex; justify-content: space-around; }
-nav#nav button { background: none; border: 0; color: var(--apagado); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; padding: 6px 10px; min-width: 64px; cursor: pointer; }
+nav#nav button { background: none; border: 0; color: var(--apagado); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; padding: 6px 4px; min-width: 56px; cursor: pointer; }
 nav#nav button svg { width: 24px; height: 24px; }
 nav#nav button.on { color: var(--chama); }
 nav#nav button.on svg { filter: drop-shadow(0 0 6px rgba(255,120,30,.7)); }
@@ -224,11 +224,11 @@ ul.dicas { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
 #capa .golpes { display: flex; gap: 16px; justify-content: center; margin: 18px 0 10px; }
 #capa .golpes i { width: 13px; height: 13px; transform: rotate(45deg); border: 1.5px solid #7a3a18; background: #1a110c; transition: all .2s; }
 #capa .golpes i.on { background: linear-gradient(135deg, #fff1cf, #ffb347 50%, #e2541b); border-color: #ffb45c; box-shadow: 0 0 14px rgba(255,140,40,.85); }
-/* Fase 2: progressão, notas do mestre, voz e espera da IA */
+/* Fase 2: progressão, notas do ferreiro, voz e espera da IA */
 .prog { display: flex; gap: 6px; align-items: baseline; font-size: 12.5px; margin-top: 5px; line-height: 1.35; }
 .prog span:first-child { font-size: 10px; }
 .prog.sobe { color: var(--ouro); } .prog.mantem, .prog.novo { color: var(--suave); } .prog.baixa { color: #ffa98f; }
-.nota-mestre { display: block; font-size: 12.5px; color: #e8c79b; font-style: italic; margin-top: 4px; }
+.nota-ferreiro { display: block; font-size: 12.5px; color: #e8c79b; font-style: italic; margin-top: 4px; }
 .btn.a-ouvir { color: #2b1004; background: linear-gradient(180deg, #ffd27a, #ff8a2a); border-color: #ffb45c; animation: pulsa 1s ease-in-out infinite; }
 .aforjar { display: flex; gap: 14px; justify-content: center; margin-bottom: 6px; }
 .aforjar i { width: 14px; height: 14px; border-radius: 50%; background: #3a2a20; animation: brasaPulsa 1.2s ease-in-out infinite; }
@@ -236,4 +236,23 @@ ul.dicas { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
 @keyframes brasaPulsa { 35% { background: #ffb347; box-shadow: 0 0 18px #ff8a2a; transform: scale(1.3); } }
 textarea { resize: vertical; min-height: 58px; }
 .btn.peq-btn { padding: 8px 12px; font-size: 14px; }
+/* Aquecimento, alongamentos, montar treino e peso */
+.sec-treino { display: flex; align-items: center; gap: 10px; color: var(--chama); margin: 8px 2px 0; }
+.sec-treino::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #8a3c14, rgba(138,60,20,0)); }
+.folha .sec-treino { margin: 14px 2px 8px; }
+.exercicio.fase { padding: 10px 12px; }
+.exercicio.fase .mini-img { width: 48px; height: 48px; }
+.exercicio.fase.feita { opacity: .72; }
+.exercicio.fase.feita .visto { background: linear-gradient(180deg, #ffd27a, #ff8a2a 55%, #d9480f); border-color: #ffb45c; color: #2b1004; box-shadow: 0 0 12px rgba(255,120,30,.5); }
+.item.compacto { padding: 6px 8px; } .item.compacto .mini-img { width: 44px; height: 44px; }
+.item.escolhido { border-color: #b8571d; background: linear-gradient(180deg, #2c1a10, #1a110c); box-shadow: inset 0 0 18px rgba(255,100,20,.12); }
+.item .ordem { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-family: 'Cinzel', Georgia, serif; font-size: 13px; border: 1.5px solid var(--aresta); color: #2b1004; }
+.item.escolhido .ordem { background: linear-gradient(180deg, #ffd27a, #ff8a2a); border-color: #ffb45c; box-shadow: 0 0 10px rgba(255,120,30,.5); }
+.barra-sel { position: sticky; bottom: calc(-20px - env(safe-area-inset-bottom)); margin: 12px -16px 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); background: linear-gradient(180deg, rgba(21,16,13,0), #15100d 35%); z-index: 3; }
+.peso-input { display: flex; align-items: center; gap: 10px; justify-content: center; }
+.peso-input input { width: 150px; text-align: center; font-family: 'Cinzel', Georgia, serif; font-size: 30px; padding: 8px; }
+.peso-input .btn.icone { width: 46px; height: 46px; font-size: 22px; }
+.grafico-peso { width: 100%; height: auto; display: block; margin: 12px 0 10px; font-family: system-ui, sans-serif; }
+.barra-meta { height: 12px; border-radius: 6px; background: #1a1310; border: 1px solid #3a2c24; overflow: hidden; }
+.barra-meta i { display: block; height: 100%; background: linear-gradient(90deg, #8a1f08, #ff8a2a, #ffd27a); box-shadow: 0 0 10px rgba(255,140,40,.6); }
 @media (prefers-reduced-motion: reduce) { #lareira, .brasas i.acesa, #descanso.pronto, .placa.brasa::after, .opcao.on::after, .placa.acende::before { animation: none; } }

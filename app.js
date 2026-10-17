@@ -82,23 +82,49 @@ const TIPOS = {
   inferior: {nome: 'Tronco inferior', sub: 'pernas, glúteos e core', plano: ['quads', 'post', 'gluteos', 'quads', 'gemeos', 'abs', 'lombar', 'post']},
   corpo: {nome: 'Corpo inteiro', sub: 'todos os grandes grupos', plano: ['quads', 'peito', 'dorsais', 'post', 'ombros', 'costas', 'abs', 'biceps', 'triceps', 'gemeos']},
   core: {nome: 'Core', sub: 'abdominais e lombar', plano: ['abs', 'abs', 'lombar', 'abs', 'gluteos', 'abs']},
+  longevidade: {nome: 'Saúde e longevidade', sub: 'força funcional, equilíbrio, pega, postura e mobilidade', plano: ['quads', 'post', 'gluteos', 'peito', 'costas', 'lombar', 'abs', 'antebracos', 'ombros']},
+  mobilidade: {nome: 'Mobilidade e alongamentos', sub: 'articulações soltas e alongamentos para o corpo todo', plano: []},
   musculos: {nome: 'Escolher músculos'},
-  livre: {nome: 'Livre', sub: 'começas vazio e acrescentas tu', plano: []},
-  ia: {nome: 'Treino do mestre', sub: 'montado pela IA', plano: ['quads', 'peito', 'dorsais', 'post', 'ombros', 'costas', 'abs', 'biceps', 'triceps', 'gemeos'], oculto: true}
+  livre: {nome: 'Montar eu', sub: 'escolhes da lista os exercícios que queres', plano: []},
+  ia: {nome: 'Treino do ferreiro', sub: 'montado pela IA', plano: ['quads', 'peito', 'dorsais', 'post', 'ombros', 'costas', 'abs', 'biceps', 'triceps', 'gemeos'], oculto: true}
 };
+// Aquecimento: [id, alvo]. Alongamentos por músculo. Longevidade: [grupo, prioridade, opções [id, alvo], séries, descanso].
+const AQUEC = {
+  geral: [['Star_Jump', '45 s'], ['Fast_Skipping', '45 s'], ['Mountain_Climbers', '30 s']],
+  superior: [['Arm_Circles', '20 s'], ['Shoulder_Circles', '20 s'], ['Dynamic_Chest_Stretch', '10 reps'], ['Band_Pull_Apart', '15 reps'], ['Wrist_Circles', '20 s']],
+  inferior: [['Standing_Hip_Circles', '10 por lado'], ['Bodyweight_Squat', '10 reps'], ['Worlds_Greatest_Stretch', '4 por lado'], ['Groiners', '8 reps'], ['Ankle_Circles', '20 s']],
+  tronco: [['Cat_Stretch', '8 reps'], ['Inchworm', '5 reps'], ['Dynamic_Back_Stretch', '10 reps']]
+};
+const ALONG = {peito: ['Chest_And_Front_Of_Shoulder_Stretch', 'Dynamic_Chest_Stretch'], ombros: ['Shoulder_Stretch', 'Upward_Stretch'], triceps: ['Triceps_Stretch'],
+  biceps: ['Standing_Biceps_Stretch'], dorsais: ['Overhead_Lat', 'Childs_Pose'], costas: ['Middle_Back_Stretch', 'Upper_Back_Stretch'], lombar: ['Childs_Pose', 'Hug_Knees_To_Chest'],
+  quads: ['Quad_Stretch', 'Kneeling_Hip_Flexor'], post: ['Standing_Hamstring_and_Calf_Stretch', 'Seated_Floor_Hamstring_Stretch'], gluteos: ['Knee_Across_The_Body', 'Seated_Glute'],
+  gemeos: ['Calf_Stretch_Hands_Against_Wall'], adutores: ['Adductor_Groin'], abdutores: ['IT_Band_and_Glute_Stretch'], abs: ['Standing_Lateral_Stretch'],
+  antebracos: ['Kneeling_Forearm_Stretch'], trapezio: ['Side_Neck_Stretch'], pescoco: ['Side_Neck_Stretch']};
+const SUPERIORES = ['peito', 'ombros', 'triceps', 'biceps', 'dorsais', 'costas', 'trapezio', 'antebracos'];
+const LONGEV = [
+  ['pernas', 1, [['Goblet_Squat', '8–12'], ['forja_sentar_levantar', '10–15'], ['Dumbbell_Step_Ups', '8–10 por perna'], ['Bodyweight_Squat', '12–15']], 3, 75],
+  ['anca', 4, [['Romanian_Deadlift', '8–12'], ['Stiff-Legged_Dumbbell_Deadlift', '8–12'], ['Barbell_Glute_Bridge', '10–12'], ['Butt_Lift_Bridge', '12–15']], 3, 75],
+  ['empurrar', 5, [['Pushups', '8–12'], ['Incline_Push-Up', '10–12'], ['Dumbbell_Bench_Press', '8–12'], ['Standing_Dumbbell_Press', '8–12']], 3, 75],
+  ['puxar', 2, [['One-Arm_Dumbbell_Row', '10–12'], ['Inverted_Row', '8–12'], ['Bent_Over_Two-Dumbbell_Row', '10–12'], ['Face_Pull', '12–15'], ['Band_Pull_Apart', '15–20']], 3, 60],
+  ['pega', 6, [['Farmers_Walk', '30–40 s'], ['forja_suspensao', '20–30 s']], 3, 60],
+  ['equilibrio', 3, [['forja_equilibrio', '30 s por perna'], ['Kettlebell_One-Legged_Deadlift', '8 por perna'], ['forja_marcha_linha', '20 passos']], 2, 30],
+  ['core', 4, [['forja_bird_dog', '8 por lado'], ['Dead_Bug', '8 por lado'], ['Side_Bridge', '20–30 s'], ['Plank', '30–45 s'], ['Pallof_Press', '10 por lado']], 2, 45],
+  ['postura', 7, [['forja_anjos_parede', '10–12'], ['Band_Pull_Apart', '15–20'], ['Face_Pull', '12–15']], 2, 45],
+  ['mobilidade', 8, [['Worlds_Greatest_Stretch', '5 por lado'], ['Cat_Stretch', '10 reps'], ['Inchworm', '5 reps']], 1, 15]
+];
 const FRASES = ['Malha enquanto o ferro está quente.', 'Cada série é uma martelada.', 'O ferro não se molda sozinho.',
   'Hoje forjas o corpo de amanhã.', 'A disciplina é o fogo; o treino é o martelo.', 'Aço bom leva muitas marteladas.', 'Brasa que não se alimenta, apaga.'];
 
 /* ---------- Estado ---------- */
 const BASE = EQUIP.filter(e => e.base).map(e => e.id);
-let cfg = Object.assign({nome: '', objetivo: 'hipertrofia', nivel: 1, dias: 3, duracao: 60, equip: BASE.slice(), favs: [], chave: '', modelo: 'gemini-flash-latest', pronto: false, ts: 0}, LS.get('cfg', {}));
+let cfg = Object.assign({nome: '', objetivo: 'hipertrofia', nivel: 1, dias: 3, duracao: 60, equip: BASE.slice(), favs: [], modelos: [], meta: 0, chave: '', modelo: 'gemini-flash-latest', pronto: false, ts: 0}, LS.get('cfg', {}));
 let treinos = LS.get('treinos', []);
 let apagados = LS.get('apagados', {});
 let ativo = LS.get('ativo', null);
 let descanso = LS.get('descanso', null);
 let dicas = LS.get('dicas', {});
 let EX = [], EXI = {};
-const PARTILHADO = ['nome', 'objetivo', 'nivel', 'dias', 'duracao', 'equip', 'favs'];
+const PARTILHADO = ['nome', 'objetivo', 'nivel', 'dias', 'duracao', 'equip', 'favs', 'modelos', 'meta', 'aquecer', 'alongar'];
 function guardarCfg(partilhado){ if (partilhado){ cfg.ts = Date.now(); agendarSync(); } LS.set('cfg', cfg); }
 let tGuardar;
 function guardarAtivo(ja){ clearTimeout(tGuardar); if (ja) LS.set('ativo', ativo); else tGuardar = setTimeout(() => LS.set('ativo', ativo), 300); }
@@ -111,7 +137,8 @@ function toast(t, ms = 2600){
 }
 const meuEquip = () => Array.from(new Set(['corpo', ...cfg.equip]));
 const podeFazer = (ex, eq) => ex.req.every(r => eq.includes(r));
-const img = (ex, k = 0) => ex.i[k] ? IMG + ex.i[k] : '';
+const imgSrc = p => p.startsWith('local/') ? 'pictogramas/' + p.slice(6) : IMG + p;
+const img = (ex, k = 0) => ex.i[k] ? imgSrc(ex.i[k]) : '';
 const fmtSeg = s => s >= 60 ? `${Math.floor(s / 60)}:${pad(s % 60)}` : `${s} s`;
 function fmtDur(ms){ const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (h ? h + ':' + pad(m) : m) + ':' + pad(s % 60); }
 const fmtSerie = s => +s.kg ? `${num(s.kg)} kg × ${s.reps}` : `${s.reps} reps`;
@@ -140,7 +167,7 @@ function historicoEx(id){
 function ultimoPorMusculo(){
   const m = {};
   for (const t of treinos) for (const it of t.itens){
-    const ex = EXI[it.id]; if (!ex || !it.series.length) continue;
+    const ex = EXI[it.id]; if (!ex || !it.series.length || it.fase) continue;
     for (const p of ex.p) if (!m[p] || m[p] < t.inicio) m[p] = t.inicio;
   }
   return m;
@@ -263,7 +290,7 @@ function gerarTreino(o){
   itens.sort((a, b) => peso(b) - peso(a));
   return itens.map(ex => novoItem(ex));
 }
-function minutosPlano(itens){ return Math.round((5 * 60 + itens.reduce((a, it) => a + it.series.length * (40 + (it.desc || 60)) + 60, 0)) / 60); }
+function minutosPlano(itens){ return Math.round(((itens.some(it => it.fase) ? 0 : 300) + itens.reduce((a, it) => a + segundosItem(it), 0)) / 60); }
 function sugestao(){
   const cand = cfg.dias <= 2 ? ['corpo'] : cfg.dias === 4 ? ['superior', 'inferior'] : ['push', 'pull', 'pernas'];
   const um = ultimoPorMusculo();
@@ -282,7 +309,7 @@ function sugestao(){
 
 /* ---------- Navegação ---------- */
 let vista = 'vInicio';
-const RENDER = {vInicio: renderInicio, vTreino: renderTreino, vExercicios: renderExercicios, vHistorico: renderHistorico, vPerfil: renderPerfil};
+const RENDER = {vInicio: renderInicio, vTreino: renderTreino, vExercicios: renderExercicios, vPeso: () => renderPeso(), vHistorico: renderHistorico, vPerfil: renderPerfil};
 // Ao entrar num ecrã, as cantoneiras das placas visíveis aquecem e soltam faíscas, como acabadas de forjar.
 function forjarPlacas(){
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -333,9 +360,11 @@ function renderInicio(){
   $('#vInicio').innerHTML = `
     <div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
     ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
-    ${ativo ? '' : `<div class="placa rebites"><h2>Pede ao mestre</h2>${cfg.chave ? `<div class="linha"><input type="text" id="pedidoMestre" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
-        <button class="btn icone" data-acao="falar" data-alvo="pedidoMestre" data-depois="pedirMestre" aria-label="Falar">${IC.mic}</button><button class="btn icone quente" data-acao="pedirMestre" aria-label="Pedir">${IC.seta}</button></div>
-        <div class="chips" style="margin-top:10px">${['Tenho 20 minutos', 'Quero suar', 'Só halteres hoje', 'Dói-me o ombro'].map(t => chip(false, 'sugMestre', t, t)).join('')}</div>`
+    ${ativo ? '' : `<div class="botoes"><button class="btn" data-acao="montar">${IC.mais} Montar o meu treino</button><button class="btn" data-acao="tipoDireto" data-v="mobilidade">Alongamentos</button></div>`}
+    ${!ativo && (cfg.modelos || []).length ? `<div class="placa rebites"><h2>Os teus treinos</h2><div class="lista">${cfg.modelos.map(m => `<div class="item" data-acao="usarModelo" data-id="${m.id}" style="padding:12px"><div class="t"><b>${esc(m.nome)}</b><span>${m.itens.length} exercícios · ${m.itens.slice(0, 3).map(x => EXI[x.id] ? EXI[x.id].n : '').filter(Boolean).join(', ')}${m.itens.length > 3 ? '…' : ''}</span></div><span style="color:var(--chama)">${IC.seta}</span></div>`).join('')}</div></div>` : ''}
+    ${ativo ? '' : `<div class="placa rebites"><h2>Pede ao ferreiro</h2>${cfg.chave ? `<div class="linha"><input type="text" id="pedidoFerreiro" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
+        <button class="btn icone" data-acao="falar" data-alvo="pedidoFerreiro" data-depois="pedirFerreiro" aria-label="Falar">${IC.mic}</button><button class="btn icone quente" data-acao="pedirFerreiro" aria-label="Pedir">${IC.seta}</button></div>
+        <div class="chips" style="margin-top:10px">${['Tenho 20 minutos', 'Quero suar', 'Só halteres hoje', 'Dói-me o ombro'].map(t => chip(false, 'sugFerreiro', t, t)).join('')}</div>`
       : `<p class="suave peq" style="margin:0 0 10px">Diz o que te apetece treinar, por escrito ou por voz, e a IA monta o treino. Precisa da tua chave gratuita do Gemini.</p><button class="btn" data-acao="irPerfil">${IC.ia} Ligar a IA no Perfil</button>`}</div>`}
     <div class="placa rebites"><div class="linha entre"><h2>Esta semana</h2><span class="suave peq">${feitos} de ${cfg.dias} treinos</span></div>
       <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div></div>
@@ -349,7 +378,7 @@ function renderInicio(){
 
 /* ---------- Início rápido e plano ---------- */
 let rapido = null;
-function novoRapido(tipo){ rapido = {tipo: tipo || 'auto', duracao: cfg.duracao, equip: cfg.equip.slice(), musculos: [], plano: null, pedido: '', nota: ''}; }
+function novoRapido(tipo){ rapido = {tipo: tipo || 'auto', duracao: cfg.duracao, equip: cfg.equip.slice(), musculos: [], plano: null, pedido: '', nota: '', aquec: cfg.aquecer !== false, along: cfg.alongar !== false}; }
 function folhaRapido(){
   const sug = sugestao();
   abrirFolha(cab('Início rápido') + `<div class="col">
@@ -359,32 +388,44 @@ function folhaRapido(){
       ${rapido.tipo === 'musculos' ? `<div class="chips" style="margin-top:10px">${MUSC_ESCOLHA.map(m => chip(rapido.musculos.includes(m), 'rMus', m, MUSC[m])).join('')}</div>` : ''}</div>
     <div><h3>Tempo disponível</h3><div class="chips" style="margin-top:8px">${[20, 30, 45, 60, 75, 90].map(m => chip(rapido.duracao === m, 'rDur', m, m + ' min')).join('')}</div></div>
     <div><h3>Equipamento de hoje</h3><div class="chips" style="margin-top:8px">${cfg.equip.filter(x => x !== 'corpo').map(id => chip(rapido.equip.includes(id), 'rEq', id, EQ[id].nome)).join('')}</div></div>
-    ${cfg.chave && rapido.tipo !== 'livre' ? `<div><h3>Pedido especial (opcional)</h3><div class="linha" style="margin-top:8px"><textarea id="rPedido" data-campo="rPedido" rows="2" placeholder="Ex.: quero focar no peito, dói-me o pulso">${esc(rapido.pedido || '')}</textarea><button class="btn icone" data-acao="falar" data-alvo="rPedido" aria-label="Falar">${IC.mic}</button></div></div>
+    ${rapido.tipo !== 'livre' && rapido.tipo !== 'mobilidade' ? `<div><h3>Aquecimento e alongamentos</h3><div class="chips" style="margin-top:8px">${chip(rapido.aquec, 'rAquec', '', 'Aquecimento')}${chip(rapido.along, 'rAlong', '', 'Alongamentos no fim')}</div></div>` : ''}
+    ${cfg.chave && rapido.tipo !== 'livre' && rapido.tipo !== 'mobilidade' ? `<div><h3>Pedido especial (opcional)</h3><div class="linha" style="margin-top:8px"><textarea id="rPedido" data-campo="rPedido" rows="2" placeholder="Ex.: quero focar no peito, dói-me o pulso">${esc(rapido.pedido || '')}</textarea><button class="btn icone" data-acao="falar" data-alvo="rPedido" aria-label="Falar">${IC.mic}</button></div></div>
       <button class="btn quente grande" data-acao="gerarIA">${IC.ia} Forjar com IA</button><button class="btn" data-acao="gerar">Gerar sem IA (instantâneo)</button>`
-    : `<button class="btn quente grande" data-acao="gerar">${rapido.tipo === 'livre' ? 'Continuar' : 'Gerar treino'}</button>`}</div>`);
+    : `<button class="btn quente grande" data-acao="gerar">${rapido.tipo === 'livre' ? 'Escolher exercícios' : 'Gerar treino'}</button>`}</div>`);
 }
 function nomeTreino(tipo){ return tipo === 'musculos' ? rapido.musculos.map(m => MUSC[m]).join(' + ') : TIPOS[tipo].nome; }
 function gerar(){
+  if (rapido.tipo === 'livre') return folhaSeletor('multi');
   if (rapido.tipo === 'musculos' && !rapido.musculos.length) return toast('Escolhe pelo menos um músculo.');
   rapido.real = rapido.tipo === 'auto' ? (sugestao() || {tipo: 'corpo'}).tipo : rapido.tipo;
   rapido.nome = nomeTreino(rapido.real);
   rapido.nota = '';
-  rapido.plano = gerarTreino({tipo: rapido.real, duracao: rapido.duracao, equip: rapido.equip, musculos: rapido.musculos});
+  rapido.plano = rapido.real === 'longevidade' ? gerarLongevidade(rapido.duracao, rapido.equip) : rapido.real === 'mobilidade' ? gerarMobilidade(rapido.duracao, rapido.equip)
+    : gerarTreino({tipo: rapido.real, duracao: rapido.duracao, equip: rapido.equip, musculos: rapido.musculos});
   if (!rapido.plano.length && rapido.tipo !== 'livre') toast('Com este equipamento não encontrei exercícios. Ativa mais equipamento.');
   folhaPlano();
 }
 function folhaPlano(){
-  const p = rapido.plano;
-  abrirFolha(`<div class="cab"><button class="btn icone fantasma" data-acao="acender" aria-label="Voltar">${IC.voltar}</button><h2>${esc(rapido.nome)}</h2><span class="suave peq">~${minutosPlano(p)} min</span></div>
-    ${rapido.nota ? `<div class="placa brasa" style="padding:12px 14px;margin-bottom:12px"><h2 style="margin-bottom:6px">Palavra do mestre</h2><p style="margin:0" class="peq">${esc(rapido.nota)}</p></div>` : ''}
-    <p class="suave peq" style="margin:-4px 0 12px">Aquece 5 minutos antes de começar. Toca num exercício para ver como se faz.</p>
+  const p = rapido.plano, mob = (rapido.real || rapido.tipo) === 'mobilidade';
+  rapido.fasesAq = rapido.aquec && !mob && p.length ? construirAquecimento(p, rapido.equip) : [];
+  rapido.fasesAl = rapido.along && !mob && p.length ? construirAlongamentos(p, rapido.equip) : [];
+  const fase = (titulo, lista) => lista.length ? `<h3 class="sec-treino">${titulo}</h3><div class="lista">${lista.map(it => { const ex = EXI[it.id]; return `<div class="item compacto" data-acao="verEx" data-id="${ex.id}">
+      <img class="mini-img" src="${img(ex)}" alt="" onerror="this.style.visibility='hidden'"><div class="t"><b>${esc(ex.n)}</b><span>${it.series.length > 1 ? it.series.length + ' × ' : ''}${esc(it.alvo)}</span></div></div>`; }).join('')}</div>` : '';
+  const todos = [...rapido.fasesAq, ...p, ...rapido.fasesAl];
+  abrirFolha(`<div class="cab"><button class="btn icone fantasma" data-acao="acender" aria-label="Voltar">${IC.voltar}</button><h2>${esc(rapido.nome)}</h2><span class="suave peq">~${minutosPlano(todos)} min</span></div>
+    ${rapido.nota ? `<div class="placa brasa" style="padding:12px 14px;margin-bottom:12px"><h2 style="margin-bottom:6px">Palavra do ferreiro</h2><p style="margin:0" class="peq">${esc(rapido.nota)}</p></div>` : ''}
+    ${mob ? '' : `<div class="chips" style="margin-bottom:12px">${chip(rapido.aquec, 'pAquec', '', 'Aquecimento')}${chip(rapido.along, 'pAlong', '', 'Alongamentos no fim')}</div>`}
+    ${fase('Aquecimento', rapido.fasesAq)}
+    ${rapido.fasesAq.length || rapido.fasesAl.length ? '<h3 class="sec-treino">Treino</h3>' : ''}
     <div class="lista">${p.map((it, i) => { const ex = EXI[it.id]; return `<div class="item">
       <img class="mini-img" src="${img(ex)}" alt="" data-acao="verEx" data-id="${ex.id}" onerror="this.style.visibility='hidden'">
-      <div class="t" data-acao="verEx" data-id="${ex.id}"><b>${esc(ex.n)}</b><span>${it.series.length} × ${it.alvo} · ${esc(musculosTxt(ex))}</span>${it.nota ? `<span class="nota-mestre">${esc(it.nota)}</span>` : ''}</div>
-      <button class="btn icone" data-acao="pTrocar" data-i="${i}" aria-label="Trocar">${IC.trocar}</button>
+      <div class="t" data-acao="verEx" data-id="${ex.id}"><b>${esc(ex.n)}</b><span>${it.series.length} × ${esc(it.alvo)}${it.fase ? '' : ' · ' + esc(musculosTxt(ex))}</span>${it.nota ? `<span class="nota-ferreiro">${esc(it.nota)}</span>` : ''}</div>
+      ${it.fase ? '' : `<button class="btn icone" data-acao="pTrocar" data-i="${i}" aria-label="Trocar">${IC.trocar}</button>`}
       <button class="btn icone" data-acao="pTirar" data-i="${i}" aria-label="Tirar">${IC.x}</button></div>`; }).join('') || '<div class="vazio">Ainda sem exercícios. Acrescenta os que quiseres.</div>'}</div>
-    <div class="botoes" style="margin-top:12px"><button class="btn" data-acao="pAdicionar">${IC.mais} Exercício</button>${rapido.tipo !== 'livre' ? `<button class="btn" data-acao="${rapido.nota && cfg.chave ? 'gerarIA' : 'gerar'}">Gerar outro</button>` : ''}</div>
-    <button class="btn quente grande" style="margin-top:12px" data-acao="comecar" ${p.length ? '' : 'disabled'}>Começar treino</button>`, 'plano');
+    ${fase('Alongamentos', rapido.fasesAl)}
+    <div class="botoes" style="margin-top:12px"><button class="btn" data-acao="pAdicionar">${IC.mais} Exercício</button>${rapido.tipo !== 'livre' && !rapido.modelo ? `<button class="btn" data-acao="${rapido.nota && cfg.chave ? 'gerarIA' : 'gerar'}">Gerar outro</button>` : ''}</div>
+    <div class="botoes" style="margin-top:6px">${rapido.modelo ? '<button class="btn fantasma perigo" data-acao="apagarModelo">Apagar modelo</button>' : `<button class="btn fantasma" data-acao="guardarModelo" ${p.length ? '' : 'disabled'}>Guardar como modelo</button>`}</div>
+    <button class="btn quente grande" style="margin-top:8px" data-acao="comecar" ${p.length ? '' : 'disabled'}>Começar treino</button>`, 'plano');
 }
 function trocarNoPlano(lista, i, eq){
   const atual = EXI[lista[i].id], usados = new Set(lista.map(x => x.id));
@@ -398,23 +439,26 @@ function trocarNoPlano(lista, i, eq){
 /* ---------- Seletor de exercícios ---------- */
 let sel = null;
 function folhaSeletor(destino, i){
-  sel = {destino, i, q: '', mus: ''};
-  abrirFolha(cab('Escolher exercício') + `<input type="search" placeholder="Procurar (ex.: supino, remada)…" data-campo="selQ" style="margin-bottom:10px">
-    <div class="chips" style="margin-bottom:12px">${chip(true, 'selMus', '', 'Todos')}${MUSC_ESCOLHA.map(m => chip(false, 'selMus', m, MUSC[m])).join('')}</div><div id="selLista" class="lista"></div>`, 'seletor');
+  const multi = destino === 'multi';
+  sel = {destino, i, q: '', mus: '', cat: multi ? 'forca' : '', escolhidos: []};
+  abrirFolha(cab(multi ? 'Montar o meu treino' : 'Escolher exercício') + `${multi ? '<p class="suave peq" style="margin:-4px 0 10px">Toca nos exercícios pela ordem em que os queres fazer.</p>' : ''}<input type="search" placeholder="Procurar (ex.: supino, remada)…" data-campo="selQ" style="margin-bottom:10px">
+    ${multi ? `<div class="chips" style="margin-bottom:8px">${[['forca', 'Força'], ['alongamento', 'Alongamentos'], ['pliometria', 'Pliometria'], ['', 'Todos']].map(([k, t]) => chip(sel.cat === k, 'selCat', k, t)).join('')}</div>` : ''}
+    <div class="chips" style="margin-bottom:12px">${chip(true, 'selMus', '', 'Todos os músculos')}${MUSC_ESCOLHA.map(m => chip(false, 'selMus', m, MUSC[m])).join('')}</div><div id="selLista" class="lista"></div>
+    ${multi ? '<div class="barra-sel"><button class="btn quente grande" data-acao="selContinuar" id="selContinuar">Escolhe exercícios</button></div>' : ''}`, 'seletor');
   listaSeletor();
 }
 function listaSeletor(){
   const eq = Array.from(new Set(['corpo', ...(sel.destino === 'plano' ? rapido.equip : cfg.equip)])), q = norm(sel.q);
-  const r = EX.filter(e => podeFazer(e, eq) && (!sel.mus || e.p.includes(sel.mus)) && (!q || norm(e.n).includes(q) || norm(e.en).includes(q)))
+  const r = EX.filter(e => podeFazer(e, eq) && (!sel.mus || e.p.includes(sel.mus)) && (!sel.cat || q || e.c === sel.cat) && (!q || norm(e.n).includes(q) || norm(e.en).includes(q)))
     .sort((a, b) => (cfg.favs.includes(b.id) - cfg.favs.includes(a.id)) || (b.e - a.e) || (a.c === 'forca' ? -1 : 0) - (b.c === 'forca' ? -1 : 0) || a.n.localeCompare(b.n, 'pt'));
-  $('#selLista').innerHTML = r.slice(0, 80).map(e => linhaEx(e, '', 'selEscolher')).join('') + (r.length > 80 ? `<p class="suave peq centro">Mais ${r.length - 80}: escreve para filtrar.</p>` : '') || '<div class="vazio">Nada encontrado.</div>';
+  $('#selLista').innerHTML = r.slice(0, 80).map(e => sel.destino === 'multi' ? linhaSel(e) : linhaEx(e, '', 'selEscolher')).join('') + (r.length > 80 ? `<p class="suave peq centro">Mais ${r.length - 80}: escreve para filtrar.</p>` : '') || '<div class="vazio">Nada encontrado.</div>';
 }
 
 /* ---------- Treino em curso ---------- */
 function comecar(){
-  ativo = {id: uid(), inicio: Date.now(), tipo: rapido.real || rapido.tipo, nome: rapido.nome, itens: rapido.plano};
+  ativo = {id: uid(), inicio: Date.now(), tipo: rapido.real || rapido.tipo, nome: rapido.nome, itens: [...(rapido.fasesAq || []), ...rapido.plano, ...(rapido.fasesAl || [])]};
   rapido = null;
-  preencherSugestoes(ativo.itens);
+  preencherSugestoes(ativo.itens.filter(it => !it.fase));
   guardarAtivo(true); fecharFolha(); irPara('vTreino');
   Faiscas.explosao(innerWidth / 2, innerHeight * .35, 40); vibrar(30);
 }
@@ -426,13 +470,13 @@ function preencherSugestoes(itens){
   }
 }
 function cardEx(it, i){
-  const ex = EXI[it.id], u = ultimaVez(it.id), tempo = /s$|min$/.test(it.alvo);
+  const ex = EXI[it.id], u = ultimaVez(it.id), tempo = ehTempo(it.alvo);
   return `<div class="placa rebites exercicio" id="ex${i}">
     <div class="cab-ex"><img class="mini-img" src="${img(ex)}" alt="" data-acao="verEx" data-id="${ex.id}" onerror="this.style.visibility='hidden'">
       <div class="cresce"><b data-acao="verEx" data-id="${ex.id}" style="cursor:pointer;font-size:15.5px">${esc(ex.n)}</b>
         <div class="suave peq">${it.series.length} × ${it.alvo} · descanso ${fmtSeg(it.desc)}</div>
         ${u ? `<div class="apagado mini">Última vez (${dataCurta(u.data)}): ${resumoSeries(u.series)}</div>` : ''}
-        ${blocoProg(it.prog)}${it.nota ? `<div class="nota-mestre">${esc(it.nota)}</div>` : ''}</div>
+        ${blocoProg(it.prog)}${it.nota ? `<div class="nota-ferreiro">${esc(it.nota)}</div>` : ''}</div>
       <button class="btn icone fantasma" data-acao="tMenu" data-i="${i}" aria-label="Opções">${IC.menu}</button></div>
     <table class="series"><tr><th>Série</th><th>Anterior</th><th>kg</th><th>${tempo ? 'Seg.' : 'Reps'}</th><th></th></tr>
     ${it.series.map((s, j) => { const a = u && u.series[j]; return `<tr class="${s.feito ? 'feita' : ''}"><td>${j + 1}</td><td class="ant">${a ? fmtSerie(a) : '—'}</td>
@@ -448,12 +492,12 @@ function renderTreino(){
   $('#vTreino').innerHTML = `
     <div><h2>${esc(ativo.nome)}</h2><div class="linha entre" style="margin-top:6px"><div class="linha" style="gap:12px"><span class="relogio quente" id="cronoTreino">${fmtDur(Date.now() - ativo.inicio)}</span><span class="suave peq" id="contaSeries">${feitas}/${total} séries</span></div>
       <div class="linha" style="gap:6px">${cfg.chave ? `<button class="btn peq-btn" data-acao="adaptar">${IC.ia} Adaptar</button>` : ''}<button class="btn perigo peq-btn" data-acao="cancelarTreino">Cancelar</button></div></div></div>
-    ${ativo.itens.map(cardEx).join('') || '<div class="vazio">Sem exercícios. Acrescenta o primeiro.</div>'}
+    ${(() => { const temFases = ativo.itens.some(it => it.fase); let ant = null; return ativo.itens.map((it, i) => { const f = it.fase || 'treino', h = temFases && f !== ant ? `<h3 class="sec-treino">${nomeFase(it.fase)}</h3>` : ''; ant = f; return h + (it.fase ? cardFase(it, i) : cardEx(it, i)); }).join(''); })() || '<div class="vazio">Sem exercícios. Acrescenta o primeiro.</div>'}
     <button class="btn" data-acao="tAdicionar">${IC.mais} Adicionar exercício</button>
     <button class="btn quente grande" data-acao="terminar">Terminar treino</button>`;
 }
 function atualizarCard(i){
-  const el = $('#ex' + i); if (el) el.outerHTML = cardEx(ativo.itens[i], i);
+  const el = $('#ex' + i); if (el) el.outerHTML = (ativo.itens[i].fase ? cardFase : cardEx)(ativo.itens[i], i);
   const feitas = ativo.itens.reduce((a, it) => a + it.series.filter(s => s.feito).length, 0), total = ativo.itens.reduce((a, it) => a + it.series.length, 0);
   const c = $('#contaSeries'); if (c) c.textContent = `${feitas}/${total} séries`;
 }
@@ -466,17 +510,18 @@ function marcarFeito(btn){
     if (s.reps === '') s.reps = ireps.placeholder || '0';
     s.ts = Date.now();
     Faiscas.de(btn, 22); vibrar(25);
-    const ultima = i === ativo.itens.length - 1 && it.series.every(x => x.feito);
+    const ultima = !ativo.itens.slice(i + 1).some(x => !x.fase) && it.series.every(x => x.feito);
     if (!ultima) iniciarDescanso(it.desc);
   }
   guardarAtivo(true); atualizarCard(i);
 }
 function terminar(){
-  const itens = ativo.itens.map(it => ({id: it.id, series: it.series.filter(s => s.feito).map(s => ({kg: +s.kg || 0, reps: +s.reps || 0}))})).filter(it => it.series.length);
+  const itens = ativo.itens.map(it => ({id: it.id, ...(it.fase ? {fase: it.fase} : {}), series: it.series.filter(s => s.feito).map(s => ({kg: +s.kg || 0, reps: +s.reps || 0}))})).filter(it => it.series.length);
   if (!itens.length){ if (confirm('Ainda não marcaste nenhuma série. Descartar este treino?')){ ativo = null; guardarAtivo(true); pararDescanso(); irPara('vInicio'); } return; }
   if (!confirm('Terminar e guardar o treino?')) return;
   const recordes = [];
   for (const it of itens){
+    if (it.fase) continue;
     const ant = historicoEx(it.id).flatMap(h => h.series);
     if (!ant.length) continue;
     const melhor = it.series.reduce((a, s) => e1rm(s) > e1rm(a) ? s : a, it.series[0]);
@@ -569,7 +614,7 @@ function folhaEx(id){
   const yt = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(ex.en + ' exercise proper form');
   abrirFolha(`<div class="cab">${voltarFolha ? `<button class="btn icone fantasma" data-acao="voltarFolha" aria-label="Voltar">${IC.voltar}</button>` : ''}<h2 style="text-transform:none;letter-spacing:.02em;font-size:17px;color:var(--texto)">${esc(ex.n)}</h2><button class="btn fantasma" data-acao="fecharFolha">Fechar</button></div>
     <div class="col">
-      <div class="img-ex" id="animEx">${ex.i.map(p => `<img src="${IMG + p}" alt="" onerror="this.remove()">`).join('')}</div>
+      <div class="img-ex" id="animEx">${ex.i.map(p => `<img src="${imgSrc(p)}" alt="" onerror="this.remove()">`).join('')}</div>
       <div class="linha entre"><span class="apagado mini">${esc(ex.en)}</span>${nivelTxt(ex.l)}</div>
       <div class="chips">${ex.p.map(m => `<span class="etiqueta q">${MUSC[m]}</span>`).join('')}${ex.s.map(m => `<span class="etiqueta">${MUSC[m]}</span>`).join('')}
         ${ex.req.filter(r => r !== 'corpo').map(r => `<span class="etiqueta"${meu.includes(r) ? '' : ' style="color:var(--chama)"'}>${EQ[r].nome}</span>`).join('')}</div>
@@ -581,11 +626,12 @@ function folhaEx(id){
     </div>`);
   clearInterval(tAnim);
   if (ex.i.length > 1) tAnim = setInterval(() => { const a = $('#animEx'); if (a) a.classList.toggle('b'); else clearInterval(tAnim); }, 1100);
-  if (!d && cfg.chave) pedirDicas(id);
+  if (!d && cfg.chave && !ex.pt) pedirDicas(id);
 }
 function blocoDicas(ex, d){
+  if (ex.pt) return `<ol class="passos-ex">${ex.ins.map(p => `<li>${esc(p)}</li>`).join('')}</ol>${(ex.dc || []).length ? `<div class="placa brasa" style="padding:12px"><h2 style="margin-bottom:6px">Conselhos do ferreiro</h2><ul class="dicas">${ex.dc.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}`;
   if (d) return `<ol class="passos-ex">${d.passos.map(p => `<li>${esc(p)}</li>`).join('')}</ol>
-    ${d.dicas.length ? `<div class="placa brasa" style="padding:12px"><h2 style="margin-bottom:6px">Conselhos do mestre</h2><ul class="dicas">${d.dicas.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
+    ${d.dicas.length ? `<div class="placa brasa" style="padding:12px"><h2 style="margin-bottom:6px">Conselhos do ferreiro</h2><ul class="dicas">${d.dicas.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
     ${d.erros.length ? `<div class="placa" style="padding:12px"><h2 style="margin-bottom:6px">Erros comuns</h2><ul class="dicas">${d.erros.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
     ${d.respiracao ? `<p class="suave peq" style="margin:0"><b>Respiração:</b> ${esc(d.respiracao)}</p>` : ''}`;
   return `<ol class="passos-ex" lang="en">${ex.ins.map(p => `<li>${esc(p)}</li>`).join('')}</ol>
@@ -685,6 +731,8 @@ function renderPerfil(){
       <div><h3>Duração habitual</h3><div class="chips" style="margin-top:8px">${[30, 45, 60, 75, 90].map(n => chip(cfg.duracao === n, 'pDur', n, n + ' min')).join('')}</div></div></div>
     <div class="placa rebites"><h2>O meu ginásio</h2><p class="suave peq" style="margin:-4px 0 12px">Toca para ligar ou desligar. Os treinos só usam o que está aceso.</p>
       <div class="grelha">${EQUIP.filter(e => e.id !== 'corpo').map(e => tileEq(e, cfg.equip.includes(e.id), 'pEq')).join('')}</div></div>
+    <div class="placa rebites col"><h2>Aquecimento e alongamentos</h2><p class="suave peq" style="margin:0">Acrescentados ao início e ao fim de cada treino. Podes mudar antes de começar.</p>
+      <div class="chips">${chip(cfg.aquecer !== false, 'pAquecer', '', 'Aquecimento')}${chip(cfg.alongar !== false, 'pAlongar', '', 'Alongamentos no fim')}</div></div>
     <div class="placa rebites col"><h2>Imagens sem internet</h2><p class="suave peq" style="margin:0">As imagens vêm da internet e ficam guardadas quando as vês. Para treinar sem rede, guarda já as dos exercícios que podes fazer (${nImg} imagens, cerca de ${Math.round(nImg * 38 / 1024)} MB).</p>
       <button class="btn" data-acao="guardarImagens">Guardar imagens no dispositivo</button></div>
     <div class="placa rebites col"><h2>Inteligência artificial</h2>
@@ -708,7 +756,7 @@ function renderPerfil(){
 }
 async function guardarImagens(btn){
   if (!('caches' in window)) return toast('Este navegador não permite guardar imagens.');
-  const urls = EX.filter(e => podeFazer(e, meuEquip())).flatMap(e => e.i.map(p => IMG + p)), fila = urls.slice();
+  const urls = EX.filter(e => podeFazer(e, meuEquip())).flatMap(e => e.i.filter(p => !p.startsWith('local/')).map(p => IMG + p)), fila = urls.slice();
   const cache = await caches.open('forja-img'); let feitos = 0, falhas = 0; btn.disabled = true;
   const trab = async () => { while (fila.length){ const u = fila.shift(); try { if (!(await cache.match(u))){ const r = await fetch(u, {mode: 'cors'}); if (r.ok) await cache.put(u, r); else falhas++; } } catch(e){ falhas++; }
     if (++feitos % 8 === 0 || !fila.length) btn.textContent = `A guardar… ${Math.round(feitos / urls.length * 100)}%`; } };
@@ -717,7 +765,7 @@ async function guardarImagens(btn){
   toast(falhas ? `Guardadas ${urls.length - falhas} imagens; ${falhas} falharam. Tenta de novo com melhor rede.` : 'Imagens guardadas. Já podes treinar sem internet.', 4000);
 }
 function exportar(){
-  const dados = {app: 'forja', versao: 1, exportado: new Date().toISOString(), cfg: Object.fromEntries(PARTILHADO.map(k => [k, cfg[k]])), treinos, apagados, dicas};
+  const dados = {app: 'forja', versao: 1, exportado: new Date().toISOString(), cfg: Object.fromEntries(PARTILHADO.map(k => [k, cfg[k]])), treinos, apagados, dicas, pesos, pesosApag};
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(dados)], {type: 'application/json'}));
   a.download = 'forja-' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
@@ -729,6 +777,8 @@ function importar(){
       let novos = 0;
       for (const t of d.treinos || []){ const i = treinos.findIndex(x => x.id === t.id); if (i < 0){ treinos.push(t); novos++; marcarSujo(chaveMes(t.inicio)); } else if ((t.atualizado || 0) > (treinos[i].atualizado || 0)) treinos[i] = t; }
       Object.assign(apagados, d.apagados || {}); Object.assign(dicas, d.dicas || {}); LS.set('dicas', dicas);
+      for (const p of d.pesos || []){ const k = pesos.findIndex(x => x.d === p.d); if (k < 0) pesos.push(p); else if ((p.ts || 0) > (pesos[k].ts || 0)) pesos[k] = p; }
+      pesos.sort((a, b) => a.d < b.d ? -1 : 1); guardarPesos(); if ((d.pesos || []).length) pesoSujo();
       if (d.cfg && confirm('Substituir também o perfil e o equipamento pelos do ficheiro?')){ Object.assign(cfg, d.cfg); guardarCfg(true); }
       guardarTreinos(); toast(`Importado: ${novos} treinos novos.`); irPara(vista);
     } catch(e){ toast('Ficheiro inválido.'); }
@@ -823,6 +873,7 @@ async function sincronizar(){
     }
     for (const m of Object.keys(sync.sujos)) await empurrarMes(m);
     await sincPerfil();
+    await sincPesos();
     sync.ultimo = Date.now(); sync.erro = '';
   } catch(e){ sync.erro = e.message || 'Erro ao sincronizar.'; }
   finally {
@@ -876,7 +927,7 @@ function progressao(it){
   if (!ex || !f) return null;
   if (!h.length) return {tipo: 'novo', txt: 'Primeira vez: escolhe um peso em que as duas últimas repetições custem, sem perder a técnica.'};
   const [rmin, rmax] = f, u = h[0].series;
-  if (/s$|min$/.test(it.alvo)){
+  if (ehTempo(it.alvo)){
     const melhor = Math.max(...u.map(s => +s.reps || 0));
     return melhor >= rmax ? {tipo: 'sobe', reps: melhor + 5, txt: `Aguentaste ${melhor} s: hoje tenta ${melhor + 5} s.`} : {tipo: 'mantem', reps: rmax, txt: `Tenta chegar aos ${rmax} s.`};
   }
@@ -905,7 +956,7 @@ function blocoProg(p){
   return `<div class="prog ${p.tipo}"><span>${seta}</span><span>${esc(p.txt)}</span></div>`;
 }
 
-/* ---------- IA: forjar treinos, pedidos ao mestre e adaptar o treino ---------- */
+/* ---------- IA: forjar treinos, pedidos ao ferreiro e adaptar o treino ---------- */
 function poolIA(eq, musculos, alongamentos){
   const pont = e => (e.e ? 40 : 0) + (cfg.favs.includes(e.id) ? 30 : 0) + (TOPO.has(e.id) ? 15 : 0) + (e.m ? 8 : 0) + (e.l === 1 ? 3 : 0);
   const porM = {};
@@ -950,8 +1001,8 @@ async function forjarComIA(){
   const eq = Array.from(new Set(['corpo', ...rapido.equip]));
   const tipo = rapido.tipo, alvo = tipo === 'musculos' ? rapido.musculos : (TIPOS[tipo] && TIPOS[tipo].plano && TIPOS[tipo].plano.length ? Array.from(new Set(TIPOS[tipo].plano.map(s => s.split(':')[0]))) : null);
   const pool = poolIA(eq, rapido.pedido ? null : alvo, !!rapido.pedido);
-  const pedidoTipo = tipo === 'auto' ? 'decide tu, tendo em conta os músculos que estão há mais tempo sem treino' : tipo === 'musculos' ? 'músculos: ' + rapido.musculos.map(m => MUSC[m]).join(', ') : TIPOS[tipo].nome + ' (' + TIPOS[tipo].sub + ')';
-  const prompt = `És o mestre ferreiro da app Forja, um treinador de força experiente. Monta o treino de hoje.
+  const pedidoTipo = tipo === 'longevidade' ? 'saúde e longevidade: força funcional, equilíbrio, pega, postura e mobilidade; usa os exercícios forja_* quando fizerem sentido' : tipo === 'auto' ? 'decide tu, tendo em conta os músculos que estão há mais tempo sem treino' : tipo === 'musculos' ? 'músculos: ' + rapido.musculos.map(m => MUSC[m]).join(', ') : TIPOS[tipo].nome + ' (' + TIPOS[tipo].sub + ')';
+  const prompt = `És o ferreiro da app Forja, um treinador de força experiente. Monta o treino de hoje.
 ${contextoUtilizador()}
 Tempo disponível: ${rapido.duracao} minutos. Tipo de treino: ${pedidoTipo}.
 ${rapido.pedido ? `Pedido do utilizador (tem prioridade sobre o tipo e o tempo): "${rapido.pedido}"` : ''}
@@ -962,11 +1013,11 @@ Responde só com JSON: {"nome":"nome curto do treino","nota":"1 ou 2 frases a ex
   const o = lerJSON(await geminiTexto(prompt));
   const itens = itensDaIA(o.exercicios, new Set(pool.map(e => e.id)));
   if (itens.length < 2) throw new Error('A IA não montou um treino válido.');
-  return {nome: String(o.nome || 'Treino do mestre').slice(0, 40), nota: String(o.nota || '').slice(0, 320), itens};
+  return {nome: String(o.nome || 'Treino do ferreiro').slice(0, 40), nota: String(o.nota || '').slice(0, 320), itens};
 }
 function folhaAforjar(titulo){
   abrirFolha(`<div class="col centro" style="padding:30px 0 20px"><div class="aforjar"><i></i><i></i><i></i></div><h2>${titulo}</h2>
-    <p class="suave peq" style="margin:0">O mestre está a escolher o ferro. Demora uns segundos.</p></div>`, 'aforjar');
+    <p class="suave peq" style="margin:0">O ferreiro está a escolher o ferro. Demora uns segundos.</p></div>`, 'aforjar');
 }
 async function gerarIA(){
   if (rapido.tipo === 'musculos' && !rapido.musculos.length) return toast('Escolhe pelo menos um músculo.');
@@ -983,23 +1034,24 @@ async function gerarIA(){
     rapido.nota = ''; gerar();
   }
 }
-function pedirAoMestre(texto){
+function pedirAoFerreiro(texto){
   texto = String(texto || '').trim(); if (!texto) return toast('Escreve ou diz o que queres treinar.');
   novoRapido('auto'); rapido.pedido = texto;
   const m = texto.match(/(\d{2,3})\s*(min|minutos|m\b)/i); if (m) rapido.duracao = Math.min(120, Math.max(10, +m[1]));
   gerarIA();
 }
 function folhaAdaptar(){
-  abrirFolha(cab('Adaptar o treino') + `<div class="col"><p class="suave peq" style="margin:0">Diz ao mestre o que mudou. As séries já feitas ficam como estão.</p>
+  abrirFolha(cab('Adaptar o treino') + `<div class="col"><p class="suave peq" style="margin:0">Diz ao ferreiro o que mudou. As séries já feitas ficam como estão.</p>
     <div class="chips">${['Dói-me o ombro', 'Só tenho mais 15 minutos', 'Está muito fácil', 'Estou cansado', 'Não tenho banco livre'].map(t => chip(false, 'sugAdaptar', t, t)).join('')}</div>
     <div class="linha"><textarea id="adaptarTxt" rows="2" placeholder="Ex.: dói-me o joelho, troca o que for de pernas"></textarea><button class="btn icone" data-acao="falar" data-alvo="adaptarTxt" data-depois="enviarAdaptar" aria-label="Falar">${IC.mic}</button></div>
     <button class="btn quente grande" data-acao="enviarAdaptar">Adaptar</button></div>`, 'adaptar');
 }
 async function adaptarTreino(pedido){
-  const feitos = ativo.itens.filter(it => it.series.some(s => s.feito)), resto = ativo.itens.filter(it => !it.series.some(s => s.feito));
+  const aq = ativo.itens.filter(it => it.fase === 'aquec'), al = ativo.itens.filter(it => it.fase === 'along'), pr = ativo.itens.filter(it => !it.fase);
+  const feitos = pr.filter(it => it.series.some(s => s.feito)), resto = pr.filter(it => !it.series.some(s => s.feito));
   const pool = poolIA(meuEquip(), null, true);
   for (const it of resto) if (!pool.some(e => e.id === it.id) && EXI[it.id]) pool.push(EXI[it.id]);
-  const prompt = `És o mestre ferreiro da app Forja, um treinador de força experiente. O utilizador está a meio de um treino e pede uma adaptação.
+  const prompt = `És o ferreiro da app Forja, um treinador de força experiente. O utilizador está a meio de um treino e pede uma adaptação.
 ${contextoUtilizador()}
 Treino em curso: "${ativo.nome}", começou há ${Math.round((Date.now() - ativo.inicio) / 60000)} minutos.
 Já feito (não mexer): ${feitos.map(it => `${EXI[it.id].n}: ${it.series.filter(s => s.feito).map(s => (+s.kg ? s.kg + ' kg × ' : '') + s.reps).join(', ')}`).join('; ') || 'nada ainda'}.
@@ -1014,7 +1066,7 @@ Responde só com JSON: {"nota":"1 ou 2 frases a explicar o que mudaste","exercic
   const novos = itensDaIA(o.exercicios, new Set(pool.map(e => e.id)));
   if (!novos.length && resto.length) throw new Error('A IA não devolveu exercícios válidos.');
   preencherSugestoes(novos);
-  ativo.itens = feitos.concat(novos); guardarAtivo(true);
+  ativo.itens = aq.concat(feitos, novos, al); guardarAtivo(true);
   return String(o.nota || '').slice(0, 320);
 }
 let reconhecimento = null;
@@ -1028,6 +1080,187 @@ function ouvir(btn, alvo, depois){
   r.onerror = e => toast(e.error === 'not-allowed' ? 'Sem permissão para usar o microfone.' : e.error === 'no-speech' ? 'Não ouvi nada. Tenta outra vez.' : 'Não consegui ouvir. Tenta outra vez.');
   r.onend = () => { reconhecimento = null; btn.classList.remove('a-ouvir'); if (ouviu && alvo.value.trim() && depois) depois(); };
   try { r.start(); } catch(e){ reconhecimento = null; btn.classList.remove('a-ouvir'); }
+}
+
+/* ---------- Aquecimento, alongamentos, longevidade e mobilidade ---------- */
+const ehTempo = alvo => /\d\s*(s|min)\b/.test(String(alvo));
+function itemFase(ex, alvo, fase, series = 1, desc = 10){ return {u: uid(), id: ex.id, alvo, desc, fase, series: Array.from({length: series}, () => ({kg: '', reps: '', feito: false}))}; }
+function musculosDoPlano(plano){
+  const c = {};
+  for (const it of plano){ const ex = EXI[it.id]; if (ex && !it.fase) for (const m of ex.p) c[m] = (c[m] || 0) + it.series.length; }
+  return Object.keys(c).sort((a, b) => c[b] - c[a]);
+}
+function construirAquecimento(plano, equip){
+  const eq = Array.from(new Set(['corpo', ...equip])), ms = musculosDoPlano(plano), usados = new Set();
+  const sup = !ms.length || ms.some(m => SUPERIORES.includes(m)), inf = !ms.length || ms.some(m => !SUPERIORES.includes(m) && m !== 'abs');
+  const tira = (lista, n) => { const r = []; for (const [id, alvo] of lista){ const ex = EXI[id]; if (r.length >= n) break; if (ex && podeFazer(ex, eq) && !usados.has(id)){ usados.add(id); r.push(itemFase(ex, alvo, 'aquec')); } } return r; };
+  return [...tira(AQUEC.geral, 1), ...(sup ? tira(AQUEC.superior, inf ? 2 : 3) : []), ...(inf ? tira(AQUEC.inferior, sup ? 2 : 3) : []), ...tira(AQUEC.tronco, 1)];
+}
+function construirAlongamentos(plano, equip, max = 5){
+  const eq = Array.from(new Set(['corpo', ...equip])), usados = new Set(), r = [];
+  let ms = musculosDoPlano(plano); if (!ms.length) ms = ['post', 'quads', 'gluteos', 'peito', 'dorsais', 'lombar'];
+  for (const m of ms){
+    if (r.length >= max) break;
+    const id = (ALONG[m] || []).find(x => EXI[x] && podeFazer(EXI[x], eq) && !usados.has(x));
+    if (id){ usados.add(id); r.push(itemFase(EXI[id], '30 s', 'along', 2, 10)); }
+  }
+  return r;
+}
+function segundosItem(it){ return it.series.length * ((ehTempo(it.alvo) ? (parseInt(it.alvo) || 30) : 40) + (it.desc || 60)) + (it.fase ? 10 : 60); }
+function gerarLongevidade(duracao, equip){
+  const eq = Array.from(new Set(['corpo', ...equip])), rec = recentes(), usados = new Set(), escolhidos = [];
+  let tempo = 5 * 60;
+  for (const g of LONGEV.slice().sort((a, b) => a[1] - b[1])){
+    const opcoes = g[2].filter(([id]) => EXI[id] && podeFazer(EXI[id], eq) && !usados.has(id));
+    if (!opcoes.length) continue;
+    const frescas = opcoes.filter(([id]) => !rec.has(id)), pool = (frescas.length ? frescas : opcoes).slice(0, 2);
+    const [id, alvo] = pool[Math.floor(Math.random() * pool.length)];
+    const it = novoItem(EXI[id], g[3]); it.alvo = alvo; it.desc = g[4]; it.grupo = g[0];
+    const t = segundosItem(it);
+    if (escolhidos.length >= 4 && tempo + t > duracao * 60 + 120) continue;
+    tempo += t; usados.add(id); escolhidos.push(it);
+  }
+  const ordem = LONGEV.map(g => g[0]);
+  return escolhidos.sort((a, b) => ordem.indexOf(a.grupo) - ordem.indexOf(b.grupo));
+}
+function gerarMobilidade(duracao, equip){
+  duracao = Math.min(duracao, 20);
+  const eq = Array.from(new Set(['corpo', ...equip])), usados = new Set(), r = [];
+  const add = (id, alvo, series) => { const ex = EXI[id]; if (ex && podeFazer(ex, eq) && !usados.has(id)){ usados.add(id); r.push(itemFase(ex, alvo, 'along', series, 10)); return true; } return false; };
+  add('Star_Jump', '45 s', 1); AQUEC.tronco.forEach(([id, a]) => add(id, a, 1));
+  [AQUEC.inferior[0], AQUEC.inferior[2], AQUEC.superior[0], AQUEC.superior[1]].forEach(([id, a]) => add(id, a, 1));
+  let tempo = r.reduce((s, it) => s + segundosItem(it), 0);
+  for (const m of ['post', 'quads', 'gluteos', 'lombar', 'peito', 'dorsais', 'adutores', 'ombros', 'gemeos', 'costas', 'abdutores', 'triceps', 'antebracos', 'pescoco']){
+    if (tempo > duracao * 60) break;
+    for (const id of ALONG[m] || []) if (add(id, '30 s', 2)){ tempo += segundosItem(r[r.length - 1]); break; }
+  }
+  return r;
+}
+function cardFase(it, i){
+  const ex = EXI[it.id], feito = it.series.every(s => s.feito);
+  return `<div class="placa exercicio fase${feito ? ' feita' : ''}" id="ex${i}"><div class="cab-ex" style="align-items:center">
+    <img class="mini-img" src="${img(ex)}" alt="" data-acao="verEx" data-id="${ex.id}" onerror="this.style.visibility='hidden'">
+    <div class="cresce"><b data-acao="verEx" data-id="${ex.id}" style="cursor:pointer">${esc(ex.n)}</b><div class="suave peq">${it.series.length > 1 ? it.series.length + ' × ' : ''}${esc(it.alvo)}</div></div>
+    <button class="btn icone fantasma" data-acao="tMenu" data-i="${i}" aria-label="Opções">${IC.menu}</button>
+    <button class="visto" data-acao="feitoFase" data-i="${i}" aria-label="Feito">${IC.visto}</button></div></div>`;
+}
+function inserirNoTreino(it){ const k = ativo.itens.findIndex(x => x.fase === 'along'); if (k < 0) ativo.itens.push(it); else ativo.itens.splice(k, 0, it); }
+const nomeFase = f => f === 'aquec' ? 'Aquecimento' : f === 'along' ? (ativo && ativo.tipo === 'mobilidade' ? 'Mobilidade e alongamentos' : 'Alongamentos') : 'Treino';
+
+/* ---------- Peso ---------- */
+let pesos = LS.get('pesos', []), pesosApag = LS.get('pesosApag', {}), pesoRange = 90;
+const hojeChave = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+const tsDia = d => new Date(d + 'T12:00').getTime();
+function guardarPesos(){ LS.set('pesos', pesos); LS.set('pesosApag', pesosApag); }
+function pesoSujo(){ sync.pesosSujo = Date.now(); guardarSync(); agendarSync(); }
+function registarPeso(d, kg){
+  const reg = {d, kg: Math.round(kg * 10) / 10, ts: Date.now()}, i = pesos.findIndex(p => p.d === d);
+  if (i >= 0) pesos[i] = reg; else pesos.push(reg);
+  pesos.sort((a, b) => a.d < b.d ? -1 : 1); delete pesosApag[d]; guardarPesos(); pesoSujo();
+}
+// Tendência: média móvel exponencial (10% por dia), que filtra as oscilações de água e comida.
+function tendencia(){
+  const r = []; let t = null, ult = null;
+  for (const p of pesos){
+    const ts = tsDia(p.d);
+    if (t === null) t = p.kg; else t += (1 - Math.pow(.9, Math.max(1, Math.round((ts - ult) / DIA)))) * (p.kg - t);
+    ult = ts; r.push({d: p.d, ts, kg: p.kg, t});
+  }
+  return r;
+}
+function tendEm(serie, ts){ let v = null; for (const p of serie) if (p.ts <= ts) v = p; return v; }
+function graficoPeso(serie){
+  const fim = serie[serie.length - 1].ts, ini = pesoRange ? fim - pesoRange * DIA : serie[0].ts;
+  const pts = serie.filter(p => p.ts >= ini); if (!pts.length) return '';
+  const W = 340, H = 170, L = 36, R = 10, T = 12, B = 22;
+  const vals = pts.flatMap(p => [p.kg, p.t]); if (cfg.meta) vals.push(cfg.meta);
+  let ymin = Math.min(...vals) - .6, ymax = Math.max(...vals) + .6;
+  if (cfg.meta && (cfg.meta < ymin - 8 || cfg.meta > ymax + 8)){ const v2 = pts.flatMap(p => [p.kg, p.t]); ymin = Math.min(...v2) - .6; ymax = Math.max(...v2) + .6; }
+  const x0 = pts.length > 1 ? pts[0].ts : pts[0].ts - DIA, x1 = pts.length > 1 ? fim : fim + DIA;
+  const X = ts => L + (ts - x0) / (x1 - x0) * (W - L - R), Y = v => T + (ymax - v) / (ymax - ymin) * (H - T - B);
+  const passo = ymax - ymin > 12 ? 5 : ymax - ymin > 5 ? 2 : 1, linhas = [];
+  for (let v = Math.ceil(ymin / passo) * passo; v <= ymax; v += passo) linhas.push(v);
+  const fmtD = ts => new Date(ts).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'});
+  const meta = cfg.meta && cfg.meta >= ymin && cfg.meta <= ymax ? `<line x1="${L}" x2="${W - R}" y1="${Y(cfg.meta)}" y2="${Y(cfg.meta)}" stroke="#ffc861" stroke-width="1.2" stroke-dasharray="5 5" opacity=".8"/><text x="${W - R}" y="${Y(cfg.meta) - 4}" text-anchor="end" font-size="10" fill="#ffc861">meta ${num(cfg.meta)}</text>` : '';
+  const linha = pts.map((p, k) => (k ? 'L' : 'M') + X(p.ts).toFixed(1) + ' ' + Y(p.t).toFixed(1)).join('');
+  const u = pts[pts.length - 1];
+  return `<svg class="grafico-peso" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico do peso">
+    <defs><linearGradient id="gPeso" x1="0" x2="1"><stop offset="0" stop-color="#b3260e"/><stop offset=".6" stop-color="#ff8a2a"/><stop offset="1" stop-color="#ffd27a"/></linearGradient>
+      <filter id="fPeso" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+    ${linhas.map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#3d3028" stroke-width="1"/><text x="${L - 6}" y="${Y(v) + 3.5}" text-anchor="end" font-size="10" fill="#76675b">${num(v)}</text>`).join('')}
+    ${meta}
+    ${pts.map(p => `<circle cx="${X(p.ts).toFixed(1)}" cy="${Y(p.kg).toFixed(1)}" r="2.4" fill="#b3a191" opacity=".55"/>`).join('')}
+    <path d="${linha}" fill="none" stroke="#ff7a1c" stroke-width="5" opacity=".45" filter="url(#fPeso)"/>
+    <path d="${linha}" fill="none" stroke="url(#gPeso)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${X(u.ts)}" cy="${Y(u.t)}" r="4.5" fill="#fff1cf" stroke="#ff8a2a" stroke-width="2"/>
+    <text x="${L}" y="${H - 5}" font-size="10" fill="#76675b">${fmtD(x0)}</text><text x="${W - R}" y="${H - 5}" text-anchor="end" font-size="10" fill="#76675b">${fmtD(x1)}</text>
+  </svg>`;
+}
+function renderPeso(){
+  const serie = tendencia(), u = serie[serie.length - 1], hoje = hojeChave(), regHoje = pesos.find(p => p.d === hoje);
+  const valor = regHoje ? regHoje.kg : u ? u.kg : 75;
+  const variacao = dias => { const a = u && tendEm(serie, u.ts - dias * DIA); if (!a || a === u) return ''; const d = u.t - a.t;
+    if (Math.abs(d) < .05) return `<div class="peq suave">estável em ${dias} dias</div>`;
+    return `<div class="peq" style="color:${d < 0 ? 'var(--ouro)' : 'var(--chama)'}">${d > 0 ? '+' : '−'}${num(Math.abs(d).toFixed(1))} kg em ${dias} dias</div>`; };
+  let metaHtml = '';
+  if (u && cfg.meta){
+    const inicio = serie[0].kg, total = inicio - cfg.meta, feito = inicio - u.t, prog = total ? Math.max(0, Math.min(1, feito / total)) : 1;
+    const a28 = tendEm(serie, u.ts - 28 * DIA), ritmo = a28 && a28 !== u ? (u.t - a28.t) / ((u.ts - a28.ts) / (7 * DIA)) : 0, falta = cfg.meta - u.t;
+    let eta = 'Regista durante algumas semanas para estimar quando lá chegas.';
+    if (Math.abs(falta) < .3) eta = 'Estás na meta. Agora é manter.';
+    else if (a28 && a28 !== u && Math.sign(ritmo) === Math.sign(falta) && Math.abs(ritmo) > .02){
+      const semanas = falta / ritmo, data = new Date(Date.now() + semanas * 7 * DIA);
+      eta = `Ao ritmo atual (${ritmo > 0 ? '+' : '−'}${num(Math.abs(ritmo).toFixed(2))} kg por semana), chegas lá por volta de ${data.toLocaleDateString('pt-PT', {month: 'long', year: 'numeric'})}.`;
+    } else if (a28 && a28 !== u) eta = 'Ao ritmo atual ainda não te aproximas da meta.';
+    metaHtml = `<div class="linha entre peq"><span class="suave">Início ${num(inicio)} kg</span><span class="quente cinzel">${Math.round(prog * 100)}%</span><span class="suave">Meta ${num(cfg.meta)} kg</span></div>
+      <div class="barra-meta"><i style="width:${prog * 100}%"></i></div><p class="suave peq" style="margin:0">${eta}</p>`;
+  }
+  $('#vPeso').innerHTML = `<h2>Peso</h2>
+    <div class="placa rebites col"><h2>Registar</h2>
+      <div class="peso-input"><button class="btn icone" data-acao="pesoPasso" data-v="-0.1" aria-label="Menos">−</button><input type="number" id="pesoValor" step="0.1" min="20" max="400" inputmode="decimal" value="${valor}"><span class="cinzel suave">kg</span><button class="btn icone" data-acao="pesoPasso" data-v="0.1" aria-label="Mais">+</button></div>
+      <div class="linha"><input type="date" id="pesoData" value="${hoje}" max="${hoje}" style="width:165px;flex:none"><button class="btn quente cresce" data-acao="registarPeso">${regHoje ? 'Atualizar' : 'Registar'}</button></div>
+      <p class="suave mini" style="margin:0">${regHoje ? `Já registaste hoje: ${num(regHoje.kg)} kg.` : 'Pesa-te de manhã, depois da casa de banho e antes de comer, para comparares sempre nas mesmas condições.'}</p></div>
+    ${u ? `<div class="placa rebites"><h2>Peso real</h2>
+      <div class="linha entre" style="align-items:flex-end"><div><div class="cinzel quente" style="font-size:34px;line-height:1">${num(u.t.toFixed(1))} kg</div><div class="suave mini" style="margin-top:4px">tendência, sem as oscilações de água e comida</div></div>
+        <div style="text-align:right">${variacao(7)}${variacao(30)}</div></div>
+      ${graficoPeso(serie)}
+      <div class="chips">${[[30, '1 mês'], [90, '3 meses'], [365, '1 ano'], [0, 'Tudo']].map(([v, t]) => chip(pesoRange === v, 'pesoRange', v, t)).join('')}</div></div>
+    <div class="placa rebites col"><h2>Meta</h2>${metaHtml}
+      <div class="linha"><input type="number" id="pesoMeta" step="0.5" inputmode="decimal" placeholder="Peso que queres atingir" value="${cfg.meta || ''}"><button class="btn" data-acao="guardarMeta">Guardar meta</button></div></div>
+    <div class="placa rebites"><h2>Registos</h2><div class="lista">${pesos.slice().reverse().slice(0, 14).map((p, k, l) => { const ant = l[k + 1], d = ant ? p.kg - ant.kg : 0;
+      return `<div class="linha entre peq" style="padding:4px 0"><span class="suave" style="min-width:110px">${new Date(tsDia(p.d)).toLocaleDateString('pt-PT', {weekday: 'short', day: 'numeric', month: 'short'})}</span>
+        <b>${num(p.kg)} kg</b><span class="apagado" style="min-width:54px;text-align:right">${ant ? (d > 0 ? '+' : d < 0 ? '−' : '') + num(Math.abs(d).toFixed(1)) : ''}</span>
+        <button class="btn icone fantasma" data-acao="apagarPeso" data-v="${p.d}" aria-label="Apagar">${IC.lixo}</button></div>`; }).join('')}</div></div>`
+    : '<div class="placa vazio">Regista o primeiro peso para começares a ver a tendência e o gráfico.</div>'}`;
+}
+async function sincPesos(){
+  const rem = await lerRemoto('pesos.json');
+  if (rem){
+    const r = rem.dados;
+    for (const [d, ts] of Object.entries(r.apagados || {})) if (!pesosApag[d] || pesosApag[d] < ts) pesosApag[d] = ts;
+    for (const p of r.pesos || []){ const i = pesos.findIndex(x => x.d === p.d); if (i < 0) pesos.push(p); else if ((p.ts || 0) > (pesos[i].ts || 0)) pesos[i] = p; }
+    pesos = pesos.filter(p => !(pesosApag[p.d] && pesosApag[p.d] >= (p.ts || 0))).sort((a, b) => a.d < b.d ? -1 : 1);
+    guardarPesos();
+    const ass = x => JSON.stringify([(x.pesos || []).map(p => p.d + ':' + p.ts).sort(), Object.entries(x.apagados || {}).map(e => e.join(':')).sort()]);
+    if (ass({pesos, apagados: pesosApag}) !== ass(r)) sync.pesosSujo = Date.now();
+  }
+  if (sync.pesosSujo){
+    const w = await escreverRemoto('pesos.json', {pesos, apagados: pesosApag}, rem && rem.sha);
+    if (w.conflito) throw new Error('Conflito ao sincronizar o peso. Tenta outra vez.');
+    sync.pesosSujo = 0;
+  }
+}
+
+/* ---------- Montar o meu treino e modelos ---------- */
+function linhaSel(e){
+  const k = sel.escolhidos.indexOf(e.id);
+  return `<div class="item${k >= 0 ? ' escolhido' : ''}" data-acao="selMarcar" data-id="${e.id}"><img class="mini-img" src="${img(e)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+    <div class="t"><b>${esc(e.n)}</b><span>${esc(musculosTxt(e))}${e.c !== 'forca' ? ' · ' + CATS[e.c] : ''}</span></div><span class="ordem">${k >= 0 ? k + 1 : ''}</span></div>`;
+}
+function planoDeModelo(m){
+  novoRapido(TIPOS[m.tipo] && !TIPOS[m.tipo].oculto ? m.tipo : 'livre'); rapido.real = m.tipo; rapido.nome = m.nome; rapido.modelo = m.id;
+  rapido.plano = m.itens.filter(x => EXI[x.id]).map(x => { const it = novoItem(EXI[x.id], x.n); it.alvo = x.alvo; it.desc = x.desc; return it; });
+  folhaPlano();
 }
 
 /* ---------- Capa: três marteladas para entrar ---------- */
@@ -1252,7 +1485,7 @@ const ACOES = {
     const ex = EXI[a.dataset.id];
     if (sel.destino === 'plano'){ rapido.plano.push(novoItem(ex)); folhaPlano(); return; }
     if (sel.destino === 'trocar'){ const it = novoItem(ex, ativo.itens[sel.i].series.length); preencherSugestoes([it]); ativo.itens[sel.i] = it; }
-    else { const it = novoItem(ex); preencherSugestoes([it]); ativo.itens.push(it); }
+    else { const it = novoItem(ex); preencherSugestoes([it]); inserirNoTreino(it); }
     guardarAtivo(true); fecharFolha(); renderTreino();
   },
   feito: marcarFeito,
@@ -1280,7 +1513,7 @@ const ACOES = {
   verEx(a){ const f = folhaAtual; voltarFolha = f === 'plano' ? folhaPlano : f.startsWith('treino:') ? () => folhaTreino(f.slice(7)) : null; folhaEx(a.dataset.id); },
   voltarFolha(){ const f = voltarFolha; voltarFolha = null; if (f) f(); },
   fav(a){ cfg.favs = alterna(cfg.favs, a.dataset.id); guardarCfg(true); folhaEx(a.dataset.id); if (vista === 'vExercicios') renderExercicios(); },
-  addAoTreino(a){ const it = novoItem(EXI[a.dataset.id]); preencherSugestoes([it]); ativo.itens.push(it); guardarAtivo(true); fecharFolha(); irPara('vTreino'); toast('Adicionado ao treino.'); },
+  addAoTreino(a){ const it = novoItem(EXI[a.dataset.id]); preencherSugestoes([it]); inserirNoTreino(it); guardarAtivo(true); fecharFolha(); irPara('vTreino'); toast('Adicionado ao treino.'); },
   iaDicas(a){ const st = $('#iaEstado'); if (st) st.textContent = 'A preparar…'; pedirDicas(a.dataset.id); },
   exEq(a){ exf.eq = a.dataset.v; exf.mus = ''; exf.cat = 'forca'; renderExercicios(); },
   exVoltar(){ exf.eq = null; exf.q = ''; renderExercicios(); },
@@ -1312,21 +1545,62 @@ const ACOES = {
   async ligarGH(){
     gh.dono = $('#gDono').value.trim(); gh.repo = $('#gRepo').value.trim(); gh.token = $('#gToken').value.trim(); LS.set('gh', gh);
     if (!ghLigado()) return toast('Preenche os três campos.');
-    sync.shas = {}; sync.erro = ''; for (const t of treinos) sync.sujos[chaveMes(t.inicio)] = Date.now();
+    sync.shas = {}; sync.erro = ''; for (const t of treinos) sync.sujos[chaveMes(t.inicio)] = Date.now(); if (pesos.length) sync.pesosSujo = Date.now();
     if (!treinos.length) cfg.ts = 0;  // dispositivo novo: o perfil guardado no repositório prevalece
     guardarSync(); await sincronizar(); renderPerfil(); toast(sync.erro ? sync.erro : 'Sincronização ligada.');
   },
   desligarGH(){ if (!confirm('Desligar a sincronização? Os dados ficam neste dispositivo.')) return; gh.token = ''; LS.set('gh', gh); sync.shas = {}; sync.sujos = {}; guardarSync(); renderPerfil(); },
   exportar, importar,
+  montar(){ novoRapido('livre'); folhaSeletor('multi'); },
+  tipoDireto(a){ novoRapido(a.dataset.v); gerar(); },
+  rAquec(){ rapido.aquec = !rapido.aquec; folhaRapido(); }, rAlong(){ rapido.along = !rapido.along; folhaRapido(); },
+  pAquec(){ rapido.aquec = !rapido.aquec; folhaPlano(); }, pAlong(){ rapido.along = !rapido.along; folhaPlano(); },
+  pAquecer(){ cfg.aquecer = cfg.aquecer === false; guardarCfg(true); renderPerfil(); }, pAlongar(){ cfg.alongar = cfg.alongar === false; guardarCfg(true); renderPerfil(); },
+  feitoFase(a){
+    const i = +a.dataset.i, it = ativo.itens[i], novo = !it.series.every(s => s.feito);
+    it.series.forEach(s => { s.feito = novo; if (novo){ s.kg = 0; s.reps = parseInt(it.alvo) || 1; s.ts = Date.now(); } });
+    if (novo){ Faiscas.de(a, 14); vibrar(20); }
+    guardarAtivo(true); atualizarCard(i);
+  },
+  selCat(a){ sel.cat = a.dataset.v; a.parentNode.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === a)); listaSeletor(); },
+  selMarcar(a){
+    const id = a.dataset.id, k = sel.escolhidos.indexOf(id);
+    if (k >= 0) sel.escolhidos.splice(k, 1); else { sel.escolhidos.push(id); Faiscas.de(a.querySelector('.ordem'), 6); }
+    document.querySelectorAll('#selLista [data-acao="selMarcar"]').forEach(el => { const n = sel.escolhidos.indexOf(el.dataset.id); el.classList.toggle('escolhido', n >= 0); el.querySelector('.ordem').textContent = n >= 0 ? n + 1 : ''; });
+    const b = $('#selContinuar'), n = sel.escolhidos.length; b.textContent = n ? `Continuar com ${n} ${n === 1 ? 'exercício' : 'exercícios'}` : 'Escolhe exercícios';
+  },
+  selContinuar(){
+    if (!sel.escolhidos.length) return toast('Escolhe pelo menos um exercício.');
+    if (!rapido) novoRapido('livre');
+    rapido.tipo = 'livre'; rapido.real = 'livre'; rapido.nome = 'Treino à medida'; rapido.nota = ''; rapido.modelo = null;
+    rapido.plano = sel.escolhidos.map(id => EXI[id].c === 'alongamento' ? itemFase(EXI[id], '30 s', undefined, 2, 15) : novoItem(EXI[id]));
+    folhaPlano();
+  },
+  guardarModelo(){
+    const nome = (prompt('Nome do treino (ex.: Peito e costas):', rapido.nome) || '').trim(); if (!nome) return;
+    const m = {id: uid(), nome: nome.slice(0, 40), tipo: rapido.real || rapido.tipo, itens: rapido.plano.map(it => ({id: it.id, n: it.series.length, alvo: it.alvo, desc: it.desc}))};
+    cfg.modelos = [...(cfg.modelos || []), m]; guardarCfg(true); rapido.modelo = m.id; rapido.nome = m.nome; toast('Guardado em "Os teus treinos".'); folhaPlano();
+  },
+  apagarModelo(){ if (!confirm('Apagar este modelo de treino?')) return; cfg.modelos = cfg.modelos.filter(m => m.id !== rapido.modelo); guardarCfg(true); rapido.modelo = null; fecharFolha(); RENDER[vista](); },
+  usarModelo(a){ const m = (cfg.modelos || []).find(x => x.id === a.dataset.id); if (m) planoDeModelo(m); },
+  pesoPasso(a){ const i = $('#pesoValor'); i.value = (Math.round(((parseFloat(i.value) || 0) + +a.dataset.v) * 10) / 10).toFixed(1); },
+  registarPeso(a){
+    const kg = parseFloat(String($('#pesoValor').value).replace(',', '.')), d = $('#pesoData').value || hojeChave();
+    if (!(kg > 20 && kg < 400)) return toast('Escreve um peso válido.');
+    registarPeso(d, kg); renderPeso(); toast(`Registado: ${num(kg)} kg.`); Faiscas.de($('#vPeso .placa'), 16); vibrar(25);
+  },
+  guardarMeta(){ const v = parseFloat(String($('#pesoMeta').value).replace(',', '.')); cfg.meta = v > 20 && v < 400 ? v : 0; guardarCfg(true); renderPeso(); toast(cfg.meta ? 'Meta guardada.' : 'Meta removida.'); },
+  pesoRange(a){ pesoRange = +a.dataset.v; renderPeso(); },
+  apagarPeso(a){ if (!confirm('Apagar este registo?')) return; const d = a.dataset.v; pesos = pesos.filter(p => p.d !== d); pesosApag[d] = Date.now(); guardarPesos(); pesoSujo(); renderPeso(); },
   gerarIA(){ gerarIA(); },
-  pedirMestre(){ const i = $('#pedidoMestre'); if (i) pedirAoMestre(i.value); },
-  sugMestre(a){ const i = $('#pedidoMestre'); if (i) i.value = a.dataset.v; pedirAoMestre(a.dataset.v); },
+  pedirFerreiro(){ const i = $('#pedidoFerreiro'); if (i) pedirAoFerreiro(i.value); },
+  sugFerreiro(a){ const i = $('#pedidoFerreiro'); if (i) i.value = a.dataset.v; pedirAoFerreiro(a.dataset.v); },
   falar(a){ const alvo = $('#' + a.dataset.alvo); if (alvo) ouvir(a, alvo, a.dataset.depois ? () => ACOES[a.dataset.depois](a) : null); },
   irPerfil(){ irPara('vPerfil'); },
   adaptar(){ folhaAdaptar(); },
   sugAdaptar(a){ const t = $('#adaptarTxt'); t.value = (t.value.trim() ? t.value.trim() + '. ' : '') + a.dataset.v; a.classList.add('on'); },
   async enviarAdaptar(){
-    const txt = ($('#adaptarTxt') || {}).value || ''; if (!txt.trim()) return toast('Diz ao mestre o que mudou.');
+    const txt = ($('#adaptarTxt') || {}).value || ''; if (!txt.trim()) return toast('Diz ao ferreiro o que mudou.');
     folhaAforjar('A adaptar o treino');
     try { const nota = await adaptarTreino(txt.trim()); renderTreino();
       if (folhaAtual !== 'aforjar') return;
@@ -1364,7 +1638,7 @@ document.addEventListener('click', e => {
 document.addEventListener('input', e => { const c = e.target.closest('[data-campo]'); if (c && CAMPOS[c.dataset.campo]) CAMPOS[c.dataset.campo](c, e); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && ativo) LS.set('ativo', ativo); if (!document.hidden) agendarSync(800); });
 addEventListener('online', () => agendarSync(500));
-addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden) fecharFolha(); if (e.key === 'Enter' && e.target.id === 'pedidoMestre'){ e.preventDefault(); pedirAoMestre(e.target.value); } });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden) fecharFolha(); if (e.key === 'Enter' && e.target.id === 'pedidoFerreiro'){ e.preventDefault(); pedirAoFerreiro(e.target.value); } });
 
 /* ---------- Arranque ---------- */
 (async function iniciar(){
