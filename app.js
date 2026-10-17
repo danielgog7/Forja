@@ -43,6 +43,8 @@ const ICONES = {
 };
 const svg = (d, w = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC = {
+  mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'), seta: svg('<path d="M5 12h13M13 6l6 6-6 6"/>', 2),
+  ia: svg('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>'),
   visto: svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 2.4), x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
   trocar: svg('<path d="M4 8h13l-3-3M20 16H7l3 3"/>'), menu: svg('<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>', 2.4),
   video: svg('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9l5 3-5 3z"/>'), voltar: svg('<path d="M15 5l-7 7 7 7"/>', 2),
@@ -81,7 +83,8 @@ const TIPOS = {
   corpo: {nome: 'Corpo inteiro', sub: 'todos os grandes grupos', plano: ['quads', 'peito', 'dorsais', 'post', 'ombros', 'costas', 'abs', 'biceps', 'triceps', 'gemeos']},
   core: {nome: 'Core', sub: 'abdominais e lombar', plano: ['abs', 'abs', 'lombar', 'abs', 'gluteos', 'abs']},
   musculos: {nome: 'Escolher músculos'},
-  livre: {nome: 'Livre', sub: 'começas vazio e acrescentas tu', plano: []}
+  livre: {nome: 'Livre', sub: 'começas vazio e acrescentas tu', plano: []},
+  ia: {nome: 'Treino do mestre', sub: 'montado pela IA', plano: ['quads', 'peito', 'dorsais', 'post', 'ombros', 'costas', 'abs', 'biceps', 'triceps', 'gemeos'], oculto: true}
 };
 const FRASES = ['Malha enquanto o ferro está quente.', 'Cada série é uma martelada.', 'O ferro não se molda sozinho.',
   'Hoje forjas o corpo de amanhã.', 'A disciplina é o fogo; o treino é o martelo.', 'Aço bom leva muitas marteladas.', 'Brasa que não se alimenta, apaga.'];
@@ -260,7 +263,7 @@ function gerarTreino(o){
   itens.sort((a, b) => peso(b) - peso(a));
   return itens.map(ex => novoItem(ex));
 }
-function minutosPlano(itens){ return Math.round((5 * 60 + itens.reduce((a, it) => a + (EXI[it.id] ? segundosEx(EXI[it.id]) : 0), 0)) / 60); }
+function minutosPlano(itens){ return Math.round((5 * 60 + itens.reduce((a, it) => a + it.series.length * (40 + (it.desc || 60)) + 60, 0)) / 60); }
 function sugestao(){
   const cand = cfg.dias <= 2 ? ['corpo'] : cfg.dias === 4 ? ['superior', 'inferior'] : ['push', 'pull', 'pernas'];
   const um = ultimoPorMusculo();
@@ -303,7 +306,7 @@ function irPara(v){
 }
 let folhaAtual = '', voltarFolha = null;
 function abrirFolha(html, nome = ''){ folhaAtual = nome; const c = $('#folhaCaixa'); c.innerHTML = '<div class="pega"></div>' + html; c.scrollTop = 0; $('#folha').hidden = false; document.body.style.overflow = 'hidden'; }
-function fecharFolha(){ $('#folha').hidden = true; document.body.style.overflow = ''; clearInterval(tAnim); }
+function fecharFolha(){ $('#folha').hidden = true; document.body.style.overflow = ''; clearInterval(tAnim); folhaAtual = ''; }
 const cab = (titulo, extra = '') => `<div class="cab">${extra}<h2>${titulo}</h2><button class="btn fantasma" data-acao="fecharFolha">Fechar</button></div>`;
 const chip = (on, acao, v, txt) => `<span class="chip${on ? ' on' : ''}" data-acao="${acao}" data-v="${esc(v)}">${txt}</span>`;
 const tileEq = (e, on, acao, extra = '') => `<div class="ferramenta${on ? ' on' : ''}" data-acao="${acao}" data-v="${e.id}">${extra}${svg(ICONES[e.id], 1.6)}<span>${esc(e.nome)}</span></div>`;
@@ -330,6 +333,10 @@ function renderInicio(){
   $('#vInicio').innerHTML = `
     <div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
     ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
+    ${ativo ? '' : `<div class="placa rebites"><h2>Pede ao mestre</h2>${cfg.chave ? `<div class="linha"><input type="text" id="pedidoMestre" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
+        <button class="btn icone" data-acao="falar" data-alvo="pedidoMestre" data-depois="pedirMestre" aria-label="Falar">${IC.mic}</button><button class="btn icone quente" data-acao="pedirMestre" aria-label="Pedir">${IC.seta}</button></div>
+        <div class="chips" style="margin-top:10px">${['Tenho 20 minutos', 'Quero suar', 'Só halteres hoje', 'Dói-me o ombro'].map(t => chip(false, 'sugMestre', t, t)).join('')}</div>`
+      : `<p class="suave peq" style="margin:0 0 10px">Diz o que te apetece treinar, por escrito ou por voz, e a IA monta o treino. Precisa da tua chave gratuita do Gemini.</p><button class="btn" data-acao="irPerfil">${IC.ia} Ligar a IA no Perfil</button>`}</div>`}
     <div class="placa rebites"><div class="linha entre"><h2>Esta semana</h2><span class="suave peq">${feitos} de ${cfg.dias} treinos</span></div>
       <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div></div>
     ${sug ? `<div class="placa brasa"><h2>Sugestão de hoje</h2><p style="margin:0 0 12px"><b>${TIPOS[sug.tipo].nome}</b>: ${esc(sug.motivo)}</p>
@@ -342,23 +349,26 @@ function renderInicio(){
 
 /* ---------- Início rápido e plano ---------- */
 let rapido = null;
-function novoRapido(tipo){ rapido = {tipo: tipo || 'auto', duracao: cfg.duracao, equip: cfg.equip.slice(), musculos: [], plano: null}; }
+function novoRapido(tipo){ rapido = {tipo: tipo || 'auto', duracao: cfg.duracao, equip: cfg.equip.slice(), musculos: [], plano: null, pedido: '', nota: ''}; }
 function folhaRapido(){
   const sug = sugestao();
   abrirFolha(cab('Início rápido') + `<div class="col">
-    <div><h3>Tipo de treino</h3><div class="chips" style="margin-top:8px">${Object.entries(TIPOS).map(([k, t]) => chip(rapido.tipo === k, 'rTipo', k, t.nome)).join('')}</div>
+    <div><h3>Tipo de treino</h3><div class="chips" style="margin-top:8px">${Object.entries(TIPOS).filter(([, t]) => !t.oculto).map(([k, t]) => chip(rapido.tipo === k, 'rTipo', k, t.nome)).join('')}</div>
       ${rapido.tipo === 'auto' && sug ? `<p class="suave peq" style="margin:8px 0 0">Hoje: <b>${TIPOS[sug.tipo].nome}</b>, ${esc(sug.motivo)}</p>` : ''}
       ${TIPOS[rapido.tipo].sub ? `<p class="suave peq" style="margin:8px 0 0">${esc(TIPOS[rapido.tipo].sub[0].toUpperCase() + TIPOS[rapido.tipo].sub.slice(1))}.</p>` : ''}
       ${rapido.tipo === 'musculos' ? `<div class="chips" style="margin-top:10px">${MUSC_ESCOLHA.map(m => chip(rapido.musculos.includes(m), 'rMus', m, MUSC[m])).join('')}</div>` : ''}</div>
     <div><h3>Tempo disponível</h3><div class="chips" style="margin-top:8px">${[20, 30, 45, 60, 75, 90].map(m => chip(rapido.duracao === m, 'rDur', m, m + ' min')).join('')}</div></div>
     <div><h3>Equipamento de hoje</h3><div class="chips" style="margin-top:8px">${cfg.equip.filter(x => x !== 'corpo').map(id => chip(rapido.equip.includes(id), 'rEq', id, EQ[id].nome)).join('')}</div></div>
-    <button class="btn quente grande" data-acao="gerar">${rapido.tipo === 'livre' ? 'Continuar' : 'Gerar treino'}</button></div>`);
+    ${cfg.chave && rapido.tipo !== 'livre' ? `<div><h3>Pedido especial (opcional)</h3><div class="linha" style="margin-top:8px"><textarea id="rPedido" data-campo="rPedido" rows="2" placeholder="Ex.: quero focar no peito, dói-me o pulso">${esc(rapido.pedido || '')}</textarea><button class="btn icone" data-acao="falar" data-alvo="rPedido" aria-label="Falar">${IC.mic}</button></div></div>
+      <button class="btn quente grande" data-acao="gerarIA">${IC.ia} Forjar com IA</button><button class="btn" data-acao="gerar">Gerar sem IA (instantâneo)</button>`
+    : `<button class="btn quente grande" data-acao="gerar">${rapido.tipo === 'livre' ? 'Continuar' : 'Gerar treino'}</button>`}</div>`);
 }
 function nomeTreino(tipo){ return tipo === 'musculos' ? rapido.musculos.map(m => MUSC[m]).join(' + ') : TIPOS[tipo].nome; }
 function gerar(){
   if (rapido.tipo === 'musculos' && !rapido.musculos.length) return toast('Escolhe pelo menos um músculo.');
   rapido.real = rapido.tipo === 'auto' ? (sugestao() || {tipo: 'corpo'}).tipo : rapido.tipo;
   rapido.nome = nomeTreino(rapido.real);
+  rapido.nota = '';
   rapido.plano = gerarTreino({tipo: rapido.real, duracao: rapido.duracao, equip: rapido.equip, musculos: rapido.musculos});
   if (!rapido.plano.length && rapido.tipo !== 'livre') toast('Com este equipamento não encontrei exercícios. Ativa mais equipamento.');
   folhaPlano();
@@ -366,13 +376,14 @@ function gerar(){
 function folhaPlano(){
   const p = rapido.plano;
   abrirFolha(`<div class="cab"><button class="btn icone fantasma" data-acao="acender" aria-label="Voltar">${IC.voltar}</button><h2>${esc(rapido.nome)}</h2><span class="suave peq">~${minutosPlano(p)} min</span></div>
+    ${rapido.nota ? `<div class="placa brasa" style="padding:12px 14px;margin-bottom:12px"><h2 style="margin-bottom:6px">Palavra do mestre</h2><p style="margin:0" class="peq">${esc(rapido.nota)}</p></div>` : ''}
     <p class="suave peq" style="margin:-4px 0 12px">Aquece 5 minutos antes de começar. Toca num exercício para ver como se faz.</p>
     <div class="lista">${p.map((it, i) => { const ex = EXI[it.id]; return `<div class="item">
       <img class="mini-img" src="${img(ex)}" alt="" data-acao="verEx" data-id="${ex.id}" onerror="this.style.visibility='hidden'">
-      <div class="t" data-acao="verEx" data-id="${ex.id}"><b>${esc(ex.n)}</b><span>${it.series.length} × ${it.alvo} · ${esc(musculosTxt(ex))}</span></div>
+      <div class="t" data-acao="verEx" data-id="${ex.id}"><b>${esc(ex.n)}</b><span>${it.series.length} × ${it.alvo} · ${esc(musculosTxt(ex))}</span>${it.nota ? `<span class="nota-mestre">${esc(it.nota)}</span>` : ''}</div>
       <button class="btn icone" data-acao="pTrocar" data-i="${i}" aria-label="Trocar">${IC.trocar}</button>
       <button class="btn icone" data-acao="pTirar" data-i="${i}" aria-label="Tirar">${IC.x}</button></div>`; }).join('') || '<div class="vazio">Ainda sem exercícios. Acrescenta os que quiseres.</div>'}</div>
-    <div class="botoes" style="margin-top:12px"><button class="btn" data-acao="pAdicionar">${IC.mais} Exercício</button>${rapido.tipo !== 'livre' ? '<button class="btn" data-acao="gerar">Gerar outro</button>' : ''}</div>
+    <div class="botoes" style="margin-top:12px"><button class="btn" data-acao="pAdicionar">${IC.mais} Exercício</button>${rapido.tipo !== 'livre' ? `<button class="btn" data-acao="${rapido.nota && cfg.chave ? 'gerarIA' : 'gerar'}">Gerar outro</button>` : ''}</div>
     <button class="btn quente grande" style="margin-top:12px" data-acao="comecar" ${p.length ? '' : 'disabled'}>Começar treino</button>`, 'plano');
 }
 function trocarNoPlano(lista, i, eq){
@@ -402,12 +413,17 @@ function listaSeletor(){
 /* ---------- Treino em curso ---------- */
 function comecar(){
   ativo = {id: uid(), inicio: Date.now(), tipo: rapido.real || rapido.tipo, nome: rapido.nome, itens: rapido.plano};
+  rapido = null;
   preencherSugestoes(ativo.itens);
   guardarAtivo(true); fecharFolha(); irPara('vTreino');
   Faiscas.explosao(innerWidth / 2, innerHeight * .35, 40); vibrar(30);
 }
 function preencherSugestoes(itens){
-  for (const it of itens){ const u = ultimaVez(it.id); if (u) it.series.forEach((s, j) => { const a = u.series[Math.min(j, u.series.length - 1)]; if (s.kg === '' && +a.kg) s.kg = a.kg; }); }
+  for (const it of itens){
+    it.prog = progressao(it);
+    const kg = it.prog && it.prog.kg !== undefined ? it.prog.kg : null, u = ultimaVez(it.id);
+    it.series.forEach((s, j) => { if (s.kg !== '') return; if (kg) s.kg = kg; else if (u){ const a = u.series[Math.min(j, u.series.length - 1)]; if (+a.kg) s.kg = a.kg; } });
+  }
 }
 function cardEx(it, i){
   const ex = EXI[it.id], u = ultimaVez(it.id), tempo = /s$|min$/.test(it.alvo);
@@ -415,12 +431,13 @@ function cardEx(it, i){
     <div class="cab-ex"><img class="mini-img" src="${img(ex)}" alt="" data-acao="verEx" data-id="${ex.id}" onerror="this.style.visibility='hidden'">
       <div class="cresce"><b data-acao="verEx" data-id="${ex.id}" style="cursor:pointer;font-size:15.5px">${esc(ex.n)}</b>
         <div class="suave peq">${it.series.length} × ${it.alvo} · descanso ${fmtSeg(it.desc)}</div>
-        ${u ? `<div class="apagado mini">Última vez (${dataCurta(u.data)}): ${resumoSeries(u.series)}</div>` : ''}</div>
+        ${u ? `<div class="apagado mini">Última vez (${dataCurta(u.data)}): ${resumoSeries(u.series)}</div>` : ''}
+        ${blocoProg(it.prog)}${it.nota ? `<div class="nota-mestre">${esc(it.nota)}</div>` : ''}</div>
       <button class="btn icone fantasma" data-acao="tMenu" data-i="${i}" aria-label="Opções">${IC.menu}</button></div>
     <table class="series"><tr><th>Série</th><th>Anterior</th><th>kg</th><th>${tempo ? 'Seg.' : 'Reps'}</th><th></th></tr>
     ${it.series.map((s, j) => { const a = u && u.series[j]; return `<tr class="${s.feito ? 'feita' : ''}"><td>${j + 1}</td><td class="ant">${a ? fmtSerie(a) : '—'}</td>
       <td><input type="number" inputmode="decimal" step="0.5" min="0" value="${esc(s.kg)}" placeholder="${a && +a.kg ? a.kg : '0'}" data-campo="kg" data-i="${i}" data-j="${j}"></td>
-      <td><input type="number" inputmode="numeric" min="0" value="${esc(s.reps)}" placeholder="${a ? a.reps : (parseInt(it.alvo) || '')}" data-campo="reps" data-i="${i}" data-j="${j}"></td>
+      <td><input type="number" inputmode="numeric" min="0" value="${esc(s.reps)}" placeholder="${it.prog && it.prog.reps ? it.prog.reps : a ? a.reps : (parseInt(it.alvo) || '')}" data-campo="reps" data-i="${i}" data-j="${j}"></td>
       <td><button class="visto" data-acao="feito" data-i="${i}" data-j="${j}" aria-label="Série feita">${IC.visto}</button></td></tr>`; }).join('')}
     </table>
     <div class="botoes"><button class="btn fantasma" data-acao="maisSerie" data-i="${i}">${IC.mais} Série</button><button class="btn fantasma" data-acao="menosSerie" data-i="${i}">Tirar série</button></div></div>`;
@@ -429,8 +446,8 @@ function renderTreino(){
   if (!ativo){ irPara('vInicio'); return; }
   const feitas = ativo.itens.reduce((a, it) => a + it.series.filter(s => s.feito).length, 0), total = ativo.itens.reduce((a, it) => a + it.series.length, 0);
   $('#vTreino').innerHTML = `
-    <div class="linha entre"><div><h2>${esc(ativo.nome)}</h2><div class="linha" style="gap:12px"><span class="relogio quente" id="cronoTreino">${fmtDur(Date.now() - ativo.inicio)}</span><span class="suave peq" id="contaSeries">${feitas}/${total} séries</span></div></div>
-      <button class="btn perigo" data-acao="cancelarTreino">Cancelar</button></div>
+    <div><h2>${esc(ativo.nome)}</h2><div class="linha entre" style="margin-top:6px"><div class="linha" style="gap:12px"><span class="relogio quente" id="cronoTreino">${fmtDur(Date.now() - ativo.inicio)}</span><span class="suave peq" id="contaSeries">${feitas}/${total} séries</span></div>
+      <div class="linha" style="gap:6px">${cfg.chave ? `<button class="btn peq-btn" data-acao="adaptar">${IC.ia} Adaptar</button>` : ''}<button class="btn perigo peq-btn" data-acao="cancelarTreino">Cancelar</button></div></div></div>
     ${ativo.itens.map(cardEx).join('') || '<div class="vazio">Sem exercícios. Acrescenta o primeiro.</div>'}
     <button class="btn" data-acao="tAdicionar">${IC.mais} Adicionar exercício</button>
     <button class="btn quente grande" data-acao="terminar">Terminar treino</button>`;
@@ -845,6 +862,174 @@ function renderIntro(){
     <div class="passos">${[0, 1, 2, 3, 4].map(i => `<i class="${i <= p ? 'on' : ''}"></i>`).join('')}</div></div></div>`;
 }
 
+/* ---------- Progressão (regras locais: instantânea e sem internet) ---------- */
+function faixa(alvo){ const m = String(alvo).match(/(\d+)\s*[–-]\s*(\d+)/); if (m) return [+m[1], +m[2]]; const n = parseInt(alvo); return n ? [n, n] : null; }
+function incremento(ex){
+  if (ex.req.includes('kettlebell')) return 4;
+  if (ex.req.includes('halteres')) return 2;
+  if (ex.req.includes('barra') && ex.m && ex.p.some(m => ['quads', 'post', 'gluteos', 'lombar'].includes(m))) return 5;
+  return 2.5;
+}
+const arred = (x, passo) => Math.max(0, Math.round(x / passo) * passo);
+function progressao(it){
+  const ex = EXI[it.id], h = historicoEx(it.id), f = faixa(it.alvo);
+  if (!ex || !f) return null;
+  if (!h.length) return {tipo: 'novo', txt: 'Primeira vez: escolhe um peso em que as duas últimas repetições custem, sem perder a técnica.'};
+  const [rmin, rmax] = f, u = h[0].series;
+  if (/s$|min$/.test(it.alvo)){
+    const melhor = Math.max(...u.map(s => +s.reps || 0));
+    return melhor >= rmax ? {tipo: 'sobe', reps: melhor + 5, txt: `Aguentaste ${melhor} s: hoje tenta ${melhor + 5} s.`} : {tipo: 'mantem', reps: rmax, txt: `Tenta chegar aos ${rmax} s.`};
+  }
+  const kg = Math.max(...u.map(s => +s.kg || 0)), reps = u.filter(s => (+s.kg || 0) === kg).map(s => +s.reps || 0), minR = Math.min(...reps);
+  if (!kg){
+    if (minR >= rmax) return {tipo: 'sobe', kg: 0, reps: rmax + 2, txt: `Fizeste ${rmax} ou mais em todas: tenta ${rmax + 2} ou acrescenta carga.`};
+    const r = Math.max(rmin, Math.min(rmax, minR + 1));
+    return {tipo: 'mantem', kg: 0, reps: r, txt: `Tenta ${r} repetições em todas as séries.`};
+  }
+  const inc = incremento(ex);
+  if (minR >= rmax) return {tipo: 'sobe', kg: kg + inc, reps: rmin, txt: `Sobe para ${num(kg + inc)} kg: da última vez fizeste ${rmax} ou mais em todas as séries.`};
+  if (minR < rmin){
+    const ant = h[1] && h[1].series, kgAnt = ant ? Math.max(...ant.map(s => +s.kg || 0)) : null;
+    if (ant && kgAnt === kg && ant.filter(s => (+s.kg || 0) === kg).some(s => (+s.reps || 0) < rmin)){
+      const novo = arred(kg * .9, inc === 5 ? 2.5 : inc);
+      return {tipo: 'baixa', kg: novo, reps: rmax, txt: `Baixa para ${num(novo)} kg: ficaste abaixo de ${rmin} em duas sessões seguidas. Consolida a técnica e volta a subir.`};
+    }
+    return {tipo: 'mantem', kg, reps: rmin, txt: `Repete ${num(kg)} kg e tenta completar ${rmin} repetições em todas.`};
+  }
+  const r = Math.min(rmax, minR + 1);
+  return {tipo: 'mantem', kg, reps: r, txt: `Mantém ${num(kg)} kg e tenta ${r} repetições em todas as séries.`};
+}
+function blocoProg(p){
+  if (!p) return '';
+  const seta = {sobe: '▲', baixa: '▼', mantem: '■', novo: '◆'}[p.tipo];
+  return `<div class="prog ${p.tipo}"><span>${seta}</span><span>${esc(p.txt)}</span></div>`;
+}
+
+/* ---------- IA: forjar treinos, pedidos ao mestre e adaptar o treino ---------- */
+function poolIA(eq, musculos, alongamentos){
+  const pont = e => (e.e ? 40 : 0) + (cfg.favs.includes(e.id) ? 30 : 0) + (TOPO.has(e.id) ? 15 : 0) + (e.m ? 8 : 0) + (e.l === 1 ? 3 : 0);
+  const porM = {};
+  for (const e of EX){
+    if (!podeFazer(e, eq) || (cfg.nivel === 1 && e.l === 3)) continue;
+    if (!(['forca', 'pliometria'].includes(e.c) || (alongamentos && e.c === 'alongamento'))) continue;
+    const m = e.p[0]; if (musculos && !musculos.includes(m)) continue;
+    (porM[m] = porM[m] || []).push(e);
+  }
+  const pool = [];
+  for (const l of Object.values(porM)){
+    const forca = l.filter(e => e.c !== 'alongamento').sort((a, b) => pont(b) - pont(a)).slice(0, 9);
+    const along = l.filter(e => e.c === 'alongamento').sort((a, b) => pont(b) - pont(a)).slice(0, 2);
+    pool.push(...forca, ...along);
+  }
+  return pool;
+}
+const linhaPool = e => `${e.id}|${e.n}|${e.p.map(m => MUSC[m]).join('+')}|${e.c === 'alongamento' ? 'alongamento' : e.m ? 'composto' : 'isolamento'}|nível ${e.l}`;
+function contextoUtilizador(){
+  const um = ultimoPorMusculo();
+  return `Utilizador: nível ${NIVEIS[cfg.nivel][0].toLowerCase()}; objetivo: ${OBJETIVOS[cfg.objetivo][0].toLowerCase()}; treina ${cfg.dias} vezes por semana.
+Dias desde o último treino de cada músculo: ${MUSC_ESCOLHA.map(m => `${MUSC[m]} ${um[m] ? diasDesde(um[m]) : 'nunca'}`).join(', ')}.
+Últimos treinos: ${ordenados().slice(0, 3).map(t => `${dataCurta(t.inicio)} ${t.nome} (${t.itens.map(i => EXI[i.id] ? EXI[i.id].n : '').filter(Boolean).join(', ')})`).join('; ') || 'nenhum ainda'}.
+${cfg.favs.length ? 'Favoritos: ' + cfg.favs.map(id => EXI[id] && EXI[id].n).filter(Boolean).join(', ') + '.' : ''}`;
+}
+const REGRAS_JSON = `Regras: só podes usar ids da lista; começa pelos compostos; ajusta o número de exercícios ao tempo (cada série demora cerca de 40 s mais o descanso, e há 5 min de aquecimento); séries entre 2 e 6; "reps" é texto, por exemplo "8–10" ou "30–45 s"; "descanso" em segundos; adapta séries, repetições e descanso ao objetivo e ao nível. Se o utilizador falar de dor ou lesão, evita exercícios que carreguem essa zona e diz-lhe na nota para procurar um profissional se a dor persistir.
+Escreve em português de Portugal (nunca do Brasil) e trata o utilizador por "tu".`;
+function itensDaIA(lista, validos){
+  const vistos = new Set(), itens = [];
+  for (const x of Array.isArray(lista) ? lista : []){
+    if (!x || !validos.has(x.id) || vistos.has(x.id) || itens.length >= 10) continue;
+    vistos.add(x.id);
+    const ex = EXI[x.id], p = prescricao(ex), it = novoItem(ex, Math.min(6, Math.max(1, parseInt(x.series) || p.series)));
+    if (x.reps) it.alvo = String(x.reps).replace(/-/g, '–').slice(0, 12);
+    it.desc = Math.min(300, Math.max(20, parseInt(x.descanso) || p.desc));
+    if (x.nota) it.nota = String(x.nota).slice(0, 160);
+    itens.push(it);
+  }
+  return itens;
+}
+async function forjarComIA(){
+  const eq = Array.from(new Set(['corpo', ...rapido.equip]));
+  const tipo = rapido.tipo, alvo = tipo === 'musculos' ? rapido.musculos : (TIPOS[tipo] && TIPOS[tipo].plano && TIPOS[tipo].plano.length ? Array.from(new Set(TIPOS[tipo].plano.map(s => s.split(':')[0]))) : null);
+  const pool = poolIA(eq, rapido.pedido ? null : alvo, !!rapido.pedido);
+  const pedidoTipo = tipo === 'auto' ? 'decide tu, tendo em conta os músculos que estão há mais tempo sem treino' : tipo === 'musculos' ? 'músculos: ' + rapido.musculos.map(m => MUSC[m]).join(', ') : TIPOS[tipo].nome + ' (' + TIPOS[tipo].sub + ')';
+  const prompt = `És o mestre ferreiro da app Forja, um treinador de força experiente. Monta o treino de hoje.
+${contextoUtilizador()}
+Tempo disponível: ${rapido.duracao} minutos. Tipo de treino: ${pedidoTipo}.
+${rapido.pedido ? `Pedido do utilizador (tem prioridade sobre o tipo e o tempo): "${rapido.pedido}"` : ''}
+Exercícios disponíveis com o equipamento de hoje (id|nome|músculos|tipo|nível):
+${pool.map(linhaPool).join('\n')}
+${REGRAS_JSON}
+Responde só com JSON: {"nome":"nome curto do treino","nota":"1 ou 2 frases a explicar a escolha","exercicios":[{"id":"...","series":4,"reps":"8–10","descanso":120,"nota":"dica curta opcional"}]}`;
+  const o = lerJSON(await geminiTexto(prompt));
+  const itens = itensDaIA(o.exercicios, new Set(pool.map(e => e.id)));
+  if (itens.length < 2) throw new Error('A IA não montou um treino válido.');
+  return {nome: String(o.nome || 'Treino do mestre').slice(0, 40), nota: String(o.nota || '').slice(0, 320), itens};
+}
+function folhaAforjar(titulo){
+  abrirFolha(`<div class="col centro" style="padding:30px 0 20px"><div class="aforjar"><i></i><i></i><i></i></div><h2>${titulo}</h2>
+    <p class="suave peq" style="margin:0">O mestre está a escolher o ferro. Demora uns segundos.</p></div>`, 'aforjar');
+}
+async function gerarIA(){
+  if (rapido.tipo === 'musculos' && !rapido.musculos.length) return toast('Escolhe pelo menos um músculo.');
+  folhaAforjar('A forjar o teu treino');
+  try {
+    const r = await forjarComIA();
+    if (folhaAtual !== 'aforjar') return;
+    rapido.plano = r.itens; rapido.nome = r.nome; rapido.nota = r.nota;
+    rapido.real = rapido.tipo === 'auto' || rapido.tipo === 'livre' ? (rapido.pedido ? 'ia' : (sugestao() || {tipo: 'corpo'}).tipo) : rapido.tipo;
+    folhaPlano();
+  } catch(e){
+    if (folhaAtual !== 'aforjar') return;
+    toast(e.message + ' Usei o gerador sem IA.', 4000);
+    rapido.nota = ''; gerar();
+  }
+}
+function pedirAoMestre(texto){
+  texto = String(texto || '').trim(); if (!texto) return toast('Escreve ou diz o que queres treinar.');
+  novoRapido('auto'); rapido.pedido = texto;
+  const m = texto.match(/(\d{2,3})\s*(min|minutos|m\b)/i); if (m) rapido.duracao = Math.min(120, Math.max(10, +m[1]));
+  gerarIA();
+}
+function folhaAdaptar(){
+  abrirFolha(cab('Adaptar o treino') + `<div class="col"><p class="suave peq" style="margin:0">Diz ao mestre o que mudou. As séries já feitas ficam como estão.</p>
+    <div class="chips">${['Dói-me o ombro', 'Só tenho mais 15 minutos', 'Está muito fácil', 'Estou cansado', 'Não tenho banco livre'].map(t => chip(false, 'sugAdaptar', t, t)).join('')}</div>
+    <div class="linha"><textarea id="adaptarTxt" rows="2" placeholder="Ex.: dói-me o joelho, troca o que for de pernas"></textarea><button class="btn icone" data-acao="falar" data-alvo="adaptarTxt" data-depois="enviarAdaptar" aria-label="Falar">${IC.mic}</button></div>
+    <button class="btn quente grande" data-acao="enviarAdaptar">Adaptar</button></div>`, 'adaptar');
+}
+async function adaptarTreino(pedido){
+  const feitos = ativo.itens.filter(it => it.series.some(s => s.feito)), resto = ativo.itens.filter(it => !it.series.some(s => s.feito));
+  const pool = poolIA(meuEquip(), null, true);
+  for (const it of resto) if (!pool.some(e => e.id === it.id) && EXI[it.id]) pool.push(EXI[it.id]);
+  const prompt = `És o mestre ferreiro da app Forja, um treinador de força experiente. O utilizador está a meio de um treino e pede uma adaptação.
+${contextoUtilizador()}
+Treino em curso: "${ativo.nome}", começou há ${Math.round((Date.now() - ativo.inicio) / 60000)} minutos.
+Já feito (não mexer): ${feitos.map(it => `${EXI[it.id].n}: ${it.series.filter(s => s.feito).map(s => (+s.kg ? s.kg + ' kg × ' : '') + s.reps).join(', ')}`).join('; ') || 'nada ainda'}.
+Por fazer: ${resto.map(it => `${it.id} (${EXI[it.id].n}, ${it.series.length} × ${it.alvo})`).join('; ') || 'nada'}.
+Pedido do utilizador: "${pedido}"
+Devolve a nova lista do que falta fazer (podes manter, trocar, tirar ou acrescentar exercícios e mudar séries, repetições e descanso).
+Exercícios disponíveis (id|nome|músculos|tipo|nível):
+${pool.map(linhaPool).join('\n')}
+${REGRAS_JSON}
+Responde só com JSON: {"nota":"1 ou 2 frases a explicar o que mudaste","exercicios":[{"id":"...","series":3,"reps":"10–12","descanso":90,"nota":"dica curta opcional"}]}`;
+  const o = lerJSON(await geminiTexto(prompt));
+  const novos = itensDaIA(o.exercicios, new Set(pool.map(e => e.id)));
+  if (!novos.length && resto.length) throw new Error('A IA não devolveu exercícios válidos.');
+  preencherSugestoes(novos);
+  ativo.itens = feitos.concat(novos); guardarAtivo(true);
+  return String(o.nota || '').slice(0, 320);
+}
+let reconhecimento = null;
+function ouvir(btn, alvo, depois){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return toast('O reconhecimento de voz não está disponível neste navegador.');
+  if (reconhecimento){ reconhecimento.stop(); return; }
+  const r = reconhecimento = new SR(); r.lang = 'pt-PT'; r.interimResults = true;
+  let ouviu = false; btn.classList.add('a-ouvir');
+  r.onresult = e => { alvo.value = Array.from(e.results).map(x => x[0].transcript).join(''); ouviu = true; };
+  r.onerror = e => toast(e.error === 'not-allowed' ? 'Sem permissão para usar o microfone.' : e.error === 'no-speech' ? 'Não ouvi nada. Tenta outra vez.' : 'Não consegui ouvir. Tenta outra vez.');
+  r.onend = () => { reconhecimento = null; btn.classList.remove('a-ouvir'); if (ouviu && alvo.value.trim() && depois) depois(); };
+  try { r.start(); } catch(e){ reconhecimento = null; btn.classList.remove('a-ouvir'); }
+}
+
 /* ---------- Capa: três marteladas para entrar ---------- */
 // O ferro da semana: cada treino molda a barra até virar lâmina (meta = treinos por semana).
 // Pontos correspondentes da barra (f = 0) e da lâmina (f = 1); a forma intermédia é interpolada.
@@ -1133,6 +1318,21 @@ const ACOES = {
   },
   desligarGH(){ if (!confirm('Desligar a sincronização? Os dados ficam neste dispositivo.')) return; gh.token = ''; LS.set('gh', gh); sync.shas = {}; sync.sujos = {}; guardarSync(); renderPerfil(); },
   exportar, importar,
+  gerarIA(){ gerarIA(); },
+  pedirMestre(){ const i = $('#pedidoMestre'); if (i) pedirAoMestre(i.value); },
+  sugMestre(a){ const i = $('#pedidoMestre'); if (i) i.value = a.dataset.v; pedirAoMestre(a.dataset.v); },
+  falar(a){ const alvo = $('#' + a.dataset.alvo); if (alvo) ouvir(a, alvo, a.dataset.depois ? () => ACOES[a.dataset.depois](a) : null); },
+  irPerfil(){ irPara('vPerfil'); },
+  adaptar(){ folhaAdaptar(); },
+  sugAdaptar(a){ const t = $('#adaptarTxt'); t.value = (t.value.trim() ? t.value.trim() + '. ' : '') + a.dataset.v; a.classList.add('on'); },
+  async enviarAdaptar(){
+    const txt = ($('#adaptarTxt') || {}).value || ''; if (!txt.trim()) return toast('Diz ao mestre o que mudou.');
+    folhaAforjar('A adaptar o treino');
+    try { const nota = await adaptarTreino(txt.trim()); renderTreino();
+      if (folhaAtual !== 'aforjar') return;
+      abrirFolha(cab('Treino adaptado') + `<p style="margin:0 0 14px">${esc(nota || 'Feito.')}</p><button class="btn quente grande" data-acao="fecharFolha">Continuar</button>`, 'adaptado'); }
+    catch(e){ if (folhaAtual === 'aforjar'){ fecharFolha(); toast(e.message, 4000); } }
+  },
   pCapa(){ cfg.capa = cfg.capa === false; guardarCfg(); renderPerfil(); },
   pSom(){ cfg.som = cfg.som === false; guardarCfg(); renderPerfil(); if (cfg.som) clang(false); },
   verCapa(){ mostrarCapa(true); },
@@ -1147,6 +1347,7 @@ const ACOES = {
   }
 };
 const CAMPOS = {
+  rPedido(el){ rapido.pedido = el.value; },
   kg(el){ ativo.itens[+el.dataset.i].series[+el.dataset.j].kg = el.value; guardarAtivo(); },
   reps(el){ ativo.itens[+el.dataset.i].series[+el.dataset.j].reps = el.value; guardarAtivo(); },
   selQ(el){ sel.q = el.value; listaSeletor(); },
@@ -1163,7 +1364,7 @@ document.addEventListener('click', e => {
 document.addEventListener('input', e => { const c = e.target.closest('[data-campo]'); if (c && CAMPOS[c.dataset.campo]) CAMPOS[c.dataset.campo](c, e); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && ativo) LS.set('ativo', ativo); if (!document.hidden) agendarSync(800); });
 addEventListener('online', () => agendarSync(500));
-addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden) fecharFolha(); });
+addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#folha').hidden) fecharFolha(); if (e.key === 'Enter' && e.target.id === 'pedidoMestre'){ e.preventDefault(); pedirAoMestre(e.target.value); } });
 
 /* ---------- Arranque ---------- */
 (async function iniciar(){
