@@ -49,7 +49,7 @@ const IC = {
   trocar: svg('<path d="M4 8h13l-3-3M20 16H7l3 3"/>'), menu: svg('<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>', 2.4),
   video: svg('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9l5 3-5 3z"/>'), voltar: svg('<path d="M15 5l-7 7 7 7"/>', 2),
   mais: svg('<path d="M12 5v14M5 12h14"/>', 2), estrela: svg('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
-  ritmo: svg('<path d="M9 3h6l4 18H5z"/><path d="M12 16l5-9M8 17.5h8"/>'),
+  ritmo: svg('<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.6 2M9.5 2.5h5M12 2.5V6"/>'),
   cima: svg('<path d="M6 15l6-6 6 6"/>', 2), baixo: svg('<path d="M6 9l6 6 6-6"/>', 2), lixo: svg('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>')
 };
 const EQUIP = [
@@ -125,7 +125,7 @@ let ativo = LS.get('ativo', null);
 let descanso = LS.get('descanso', null);
 let dicas = LS.get('dicas', {});
 let EX = [], EXI = {};
-const PARTILHADO = ['nome', 'objetivo', 'nivel', 'dias', 'duracao', 'equip', 'favs', 'modelos', 'meta', 'aquecer', 'alongar', 'ritmo', 'ritmos', 'ritmoVoz'];
+const PARTILHADO = ['nome', 'objetivo', 'nivel', 'dias', 'duracao', 'equip', 'favs', 'modelos', 'meta', 'aquecer', 'alongar', 'tSerie', 'tSeries'];
 function guardarCfg(partilhado){ if (partilhado){ cfg.ts = Date.now(); agendarSync(); } LS.set('cfg', cfg); }
 let tGuardar;
 function guardarAtivo(ja){ clearTimeout(tGuardar); if (ja) LS.set('ativo', ativo); else tGuardar = setTimeout(() => LS.set('ativo', ativo), 300); ecraLigado(); }
@@ -450,7 +450,7 @@ function irPara(v){
 }
 let folhaAtual = '', voltarFolha = null, tLento = 0;
 function abrirFolha(html, nome = ''){ folhaAtual = nome; const c = $('#folhaCaixa'); c.innerHTML = '<div class="pega"></div>' + html; c.scrollTop = 0; $('#folha').hidden = false; document.body.style.overflow = 'hidden'; }
-function fecharFolha(){ if (folhaAtual === 'aforjar') cancelarIA(); if (folhaAtual === 'ritmo') pararRitmo(); clearTimeout(tLento); $('#folha').hidden = true; document.body.style.overflow = ''; clearInterval(tAnim); folhaAtual = ''; }
+function fecharFolha(){ if (folhaAtual === 'aforjar') cancelarIA(); clearTimeout(tLento); $('#folha').hidden = true; document.body.style.overflow = ''; clearInterval(tAnim); folhaAtual = ''; }
 const cab = (titulo, extra = '') => `<div class="cab">${extra}<h2>${titulo}</h2><button class="btn fantasma" data-acao="fecharFolha">Fechar</button></div>`;
 const chip = (on, acao, v, txt) => `<span class="chip${on ? ' on' : ''}" data-acao="${acao}" data-v="${esc(v)}">${txt}</span>`;
 const tileEq = (e, on, acao, extra = '') => `<div class="ferramenta${on ? ' on' : ''}" data-acao="${acao}" data-v="${e.id}">${extra}${svg(ICONES[e.id], 1.6)}<span>${esc(e.nome)}</span></div>`;
@@ -665,7 +665,7 @@ function cardEx(it, i){
       <td><input type="number" inputmode="numeric" min="0" value="${esc(s.reps)}" placeholder="${it.prog && it.prog.reps ? it.prog.reps : a ? a.reps : (parseInt(it.alvo) || '')}" data-campo="reps" data-i="${i}" data-j="${j}"></td>
       <td><button class="visto" data-acao="feito" data-i="${i}" data-j="${j}" aria-label="Série feita">${IC.visto}</button></td></tr>`; }).join('')}
     </table>
-    <div class="botoes"><button class="btn fantasma" data-acao="maisSerie" data-i="${i}">${IC.mais} Série</button><button class="btn fantasma" data-acao="menosSerie" data-i="${i}">Tirar série</button>${tempo ? '' : `<button class="btn fantasma" data-acao="ritmo" data-i="${i}">${IC.ritmo} Ritmo</button>`}</div></div>`;
+    <div class="botoes"><button class="btn fantasma" data-acao="maisSerie" data-i="${i}">${IC.mais} Série</button><button class="btn fantasma" data-acao="menosSerie" data-i="${i}">Tirar série</button>${tempo ? '' : `<button class="btn fantasma" data-acao="ritmo" data-i="${i}">${IC.ritmo} Ritmo ${fmtSeg(tSerieDe(it.id))}</button>`}</div></div>`;
 }
 function renderTreino(){
   if (!ativo){ irPara('vInicio'); return; }
@@ -685,6 +685,7 @@ function atualizarCard(i){
 function marcarFeito(btn){
   const i = +btn.dataset.i, j = +btn.dataset.j, it = ativo.itens[i], s = it.series[j];
   s.feito = !s.feito;
+  if (s.feito && cronoS && cronoS.i === i) pararCronoSerie();
   if (s.feito){
     const linha = btn.closest('tr'), [ikg, ireps] = linha.querySelectorAll('input');
     if (s.kg === '') s.kg = ikg.placeholder && +ikg.placeholder ? ikg.placeholder : '0';
@@ -747,15 +748,15 @@ function desenharDescanso(){
   atualizarBarras();
 }
 function atualizarBarras(){
-  const barra = $('#barraTreino'), mostrar = !!ativo && vista !== 'vTreino' && $('#descanso').hidden;
+  const barra = $('#barraTreino'), mostrar = !!ativo && vista !== 'vTreino' && $('#descanso').hidden && $('#cronoSerie').hidden;
   barra.hidden = !mostrar;
   if (mostrar) barra.innerHTML = `<span class="relogio quente">${fmtDur(Date.now() - ativo.inicio)}</span><span class="cresce">Treino em curso: <b>${esc(ativo.nome)}</b></span><span style="color:var(--chama)">Voltar</span>`;
-  $('#app').style.paddingBottom = (ativo || descanso) ? 'calc(170px + env(safe-area-inset-bottom))' : '';
+  $('#app').style.paddingBottom = (ativo || descanso || cronoS) ? 'calc(170px + env(safe-area-inset-bottom))' : '';
 }
 function tique(){
   if (ativo){ const c = $('#cronoTreino'); if (c) c.textContent = fmtDur(Date.now() - ativo.inicio); const b = $('#barraTreino .relogio'); if (b) b.textContent = fmtDur(Date.now() - ativo.inicio); }
 }
-setInterval(() => { if (descanso) desenharDescanso(); }, 250);
+setInterval(() => { if (descanso) desenharDescanso(); if (cronoS) desenharCronoSerie(); }, 250);
 
 // Ao escrever o peso ou as repetições numa série, as séries seguintes vazias (ou ainda com o valor automático) ficam iguais.
 function propagarSerie(el, campo){
@@ -769,18 +770,12 @@ function propagarSerie(el, campo){
   guardarAtivo();
 }
 
-/* ---------- Ritmo da repetição: cronómetro de cada fase do movimento ---------- */
-// Notação de tempo: descer, pausa em baixo, subir, pausa em cima (em segundos). Base no Perfil; cada exercício pode ter o seu.
-const RITMO_BASE = {d: 3, pb: 1, s: 2, pc: 0};
-const ritmoBase = () => Object.assign({}, RITMO_BASE, cfg.ritmo || {});
-function ritmoDe(id){ const ex = EXI[id]; return Object.assign({o: ex && ex.f === 'pull' ? 'sobe' : 'desce'}, ritmoBase(), (cfg.ritmos || {})[id] || {}); }
-const txtRitmo = r => [r.d, r.pb, r.s, r.pc].join('-');
-function fasesRitmo(r){
-  const desce = [['Desce', r.d, 'd'], ['Pausa', r.pb, 'p']], sobe = [['Sobe', r.s, 's'], ['Pausa', r.pc, 'p']];
-  return (r.o === 'sobe' ? sobe.concat(desce) : desce.concat(sobe)).filter(f => f[1] > 0);
-}
-const COR_FASE = {d: '#ff7a2a', s: '#ffc861', p: '#7a6a5e', prep: '#8a796b'}, ARCO = 578;
-let rit = null;
+/* ---------- Cronómetro da série (botão Ritmo): conta do tempo escolhido até zero ---------- */
+// Quando chega a zero a série já devia estar acabada. Base no Perfil; os −15/+15 ajustam e ficam guardados para o exercício.
+const T_SERIE_BASE = 120;
+const tSerieBase = () => +cfg.tSerie || T_SERIE_BASE;
+const tSerieDe = id => +(cfg.tSeries || {})[id] || tSerieBase();
+let cronoS = LS.get('cronoSerie', null);
 function bipe(freq, dur = .12, vol = .25){
   if (cfg.som === false) return;
   try {
@@ -790,86 +785,44 @@ function bipe(freq, dur = .12, vol = .25){
     o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + .03);
   } catch(e){}
 }
-function falarNumero(n){
-  if (cfg.ritmoVoz !== true || !window.speechSynthesis) return;
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(n)); u.lang = 'pt-PT'; u.rate = 1.15; speechSynthesis.speak(u); } catch(e){}
-}
-function folhaRitmo(i){
+function iniciarCronoSerie(i){
   const it = ativo.itens[i], j = it.series.findIndex(x => !x.feito);
   if (j < 0) return toast('Já fizeste todas as séries deste exercício. Acrescenta uma série primeiro.');
-  const fx = faixa(it.alvo);
-  rit = {i, j, id: it.id, r: ritmoDe(it.id), alvo: +it.series[j].reps || (fx ? fx[1] : 10), rep: 0, estado: 'parado', t0: 0, raf: 0, fase: -1, seg: -1};
-  desenharRitmo();
+  if (descanso) pararDescanso();
+  const total = tSerieDe(it.id) * 1000;
+  cronoS = {i, j, id: it.id, total, fim: Date.now() + total, avisado: false, bips: -1};
+  LS.set('cronoSerie', cronoS); bipe(880, .12, .25); vibrar(30); desenharCronoSerie();
 }
-function desenharRitmo(){
-  const it = ativo.itens[rit.i], ex = EXI[rit.id], r = rit.r, proprio = !!(cfg.ritmos || {})[rit.id];
-  const passo = (k, nome) => `<div class="ritmo-passo"><span>${nome}</span><div class="linha"><button class="btn icone" data-acao="ritPasso" data-v="${k}" data-d="-1" aria-label="Menos">−</button><b>${r[k]} s</b><button class="btn icone" data-acao="ritPasso" data-v="${k}" data-d="1" aria-label="Mais">+</button></div></div>`;
-  abrirFolha(cab('Ritmo da repetição') + `<p class="suave peq" style="margin:-4px 0 6px">${esc(ex.n)} · série ${rit.j + 1} de ${it.series.length}</p>
-    <div class="ritmo-roda"><svg viewBox="0 0 220 220" aria-hidden="true"><circle cx="110" cy="110" r="92" fill="none" stroke="#2a201a" stroke-width="12"/>
-      <circle id="ritArco" cx="110" cy="110" r="92" fill="none" stroke="${COR_FASE.prep}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${ARCO}" stroke-dashoffset="${ARCO}" transform="rotate(-90 110 110)"/></svg>
-      <div class="ritmo-centro"><b id="ritFase">${rit.rep ? 'Parado' : 'Pronto'}</b><span id="ritSeg" class="cinzel" style="font-size:30px">${txtRitmo(r)}</span><span id="ritRep">${rit.rep ? `Feitas ${rit.rep} de ${rit.alvo}` : `${rit.alvo} repetições`}</span></div></div>
-    <div class="ritmo-ctl" id="ritCtl">${botoesRitmo()}</div>
-    <div class="ritmo-cfg" id="ritCfg">
-      <div class="linha entre"><h3>Repetições</h3><div class="linha"><button class="btn icone" data-acao="ritAlvo" data-d="-1" aria-label="Menos">−</button><b class="cinzel" style="min-width:34px;text-align:center;font-size:18px">${rit.alvo}</b><button class="btn icone" data-acao="ritAlvo" data-d="1" aria-label="Mais">+</button></div></div>
-      <h3>Segundos de cada fase</h3>
-      <div class="ritmo-passos">${passo('d', 'Descer')}${passo('pb', 'Pausa em baixo')}${passo('s', 'Subir')}${passo('pc', 'Pausa em cima')}</div>
-      <div class="chips">${chip(r.o === 'desce', 'ritOrdem', 'desce', 'Começa a descer')}${chip(r.o === 'sobe', 'ritOrdem', 'sobe', 'Começa a subir')}${chip(cfg.ritmoVoz === true, 'ritVoz', '', 'Contar em voz alta')}</div>
-      <p class="apagado mini" style="margin:0">${proprio ? 'Este ritmo está guardado só para este exercício. <span class="ligacao" data-acao="ritRepor">Voltar ao ritmo base</span>' : 'Se mudares, fica guardado só para este exercício. O ritmo base muda-se no Perfil.'}</p>
-    </div>`, 'ritmo');
-}
-const botoesRitmo = () => rit.estado === 'parado'
-  ? `<button class="btn quente grande" data-acao="ritComecar">${rit.rep ? 'Continuar a série' : 'Começar a série'}</button>${rit.rep ? `<button class="btn" data-acao="ritFeita">Série feita: ${rit.rep} reps</button>` : ''}`
-  : `<div class="botoes"><button class="btn" data-acao="ritPausa">${rit.estado === 'pausa' ? 'Continuar' : 'Pausar'}</button><button class="btn quente" data-acao="ritFeita">Série feita</button></div>`;
-function guardarRitmoEx(){ cfg.ritmos = Object.assign({}, cfg.ritmos || {}, {[rit.id]: {d: rit.r.d, pb: rit.r.pb, s: rit.r.s, pc: rit.r.pc, o: rit.r.o}}); guardarCfg(true); }
-function comecarRitmo(){
-  bipe(1, .01, 0);
-  const t = performance.now();
-  rit.estado = rit.rep ? 'corre' : 'prep'; rit.t0 = t - (rit.rep ? rit.rep * duracaoRep() * 1000 : 0); rit.fase = -1; rit.seg = -1;
-  $('#ritCfg').hidden = true; $('#ritCtl').innerHTML = botoesRitmo(); $('#ritSeg').style.fontSize = '';
-  cancelAnimationFrame(rit.raf); rit.raf = requestAnimationFrame(passoRitmo);
-}
-const duracaoRep = () => fasesRitmo(rit.r).reduce((a, f) => a + f[1], 0) || 1;
-function passoRitmo(t){
-  if (!rit || folhaAtual !== 'ritmo') return;
-  rit.raf = requestAnimationFrame(passoRitmo);
-  if (rit.estado === 'pausa') return;
-  const arco = $('#ritArco'); if (!arco) return;
-  const el = (t - rit.t0) / 1000;
-  if (rit.estado === 'prep'){
-    const resta = 3 - el, sg = Math.ceil(resta);
-    if (sg !== rit.seg && sg > 0){ rit.seg = sg; bipe(660, .09, .2); vibrar(20); }
-    $('#ritFase').textContent = 'Prepara-te'; $('#ritSeg').textContent = Math.max(1, sg);
-    arco.style.strokeDashoffset = ARCO * Math.max(0, resta / 3); arco.style.stroke = COR_FASE.prep;
-    if (resta <= 0){ rit.estado = 'corre'; rit.t0 = t; rit.fase = -1; rit.seg = -1; }
-    return;
+function pararCronoSerie(){ cronoS = null; LS.set('cronoSerie', null); const c = $('#cronoSerie'); c.hidden = true; c.innerHTML = ''; atualizarBarras(); }
+function desenharCronoSerie(){
+  const c = $('#cronoSerie');
+  if (!cronoS || !ativo || !ativo.itens[cronoS.i]){ if (cronoS) pararCronoSerie(); else c.hidden = true; return; }
+  const resta = cronoS.fim - Date.now(), acabou = resta <= 0, sg = Math.ceil(resta / 1000);
+  if (!acabou && sg <= 3 && sg !== cronoS.bips){ cronoS.bips = sg; bipe(660, .08, .2); vibrar(15); }
+  if (acabou && !cronoS.avisado){ cronoS.avisado = true; LS.set('cronoSerie', cronoS); bipe(880, .2, .3); setTimeout(() => bipe(1175, .35, .3), 230); vibrar([200, 100, 200]); Faiscas.de(c, 30); }
+  if (c.hidden || !c.firstChild){
+    c.innerHTML = `<div class="linha"><span class="tempo quente" id="sTempo"></span><span class="cresce suave peq" id="sTxt"></span>
+      <button class="btn icone fantasma" data-acao="sMenos" aria-label="Menos 15 segundos">−15</button><button class="btn icone fantasma" data-acao="sMais" aria-label="Mais 15 segundos">+15</button><button class="btn icone fantasma" data-acao="sParar" aria-label="Parar">${IC.x}</button></div>
+      <div class="lingote"><i id="sBarra"></i></div><button class="btn quente" data-acao="sFeita" style="width:100%">Série feita</button>`;
+    c.hidden = false;
   }
-  const fases = fasesRitmo(rit.r), dur = duracaoRep(), n = Math.floor(el / dur), dentro = el - n * dur;
-  if (n > rit.rep){
-    rit.rep = n;
-    if (rit.rep >= rit.alvo){ bipe(880, .15, .3); setTimeout(() => bipe(1175, .25, .3), 170); vibrar([60, 40, 60]); return concluirRitmo(rit.rep); }
-  }
-  let acc = 0, k = 0; while (k < fases.length - 1 && dentro >= acc + fases[k][1]){ acc += fases[k][1]; k++; }
-  const f = fases[k], noFase = dentro - acc, chave = n * 10 + k, sg = Math.floor(noFase);
-  if (chave !== rit.fase){
-    rit.fase = chave; rit.seg = 0; vibrar(f[2] === 'p' ? 10 : 30);
-    bipe(f[2] === 'd' ? 520 : f[2] === 's' ? 880 : 390, f[2] === 'p' ? .08 : .14, f[2] === 'p' ? .14 : .28);
-    if (k === 0) falarNumero(n + 1);
-  } else if (sg !== rit.seg){ rit.seg = sg; bipe(1250, .03, .07); }
-  $('#ritFase').textContent = f[0]; $('#ritSeg').textContent = Math.max(1, Math.ceil(f[1] - noFase)); $('#ritRep').textContent = `Rep ${Math.min(n + 1, rit.alvo)} de ${rit.alvo}`;
-  arco.style.strokeDashoffset = ARCO * (1 - Math.min(1, noFase / f[1])); arco.style.stroke = COR_FASE[f[2]];
+  c.classList.toggle('pronto', acabou);
+  const ex = EXI[cronoS.id];
+  $('#sTempo').textContent = acabou ? '+' + fmtSeg(Math.floor(-resta / 1000)) : fmtSeg(sg);
+  $('#sTxt').textContent = acabou ? 'Tempo! Acaba a série.' : `${ex ? ex.n : ''} · série ${cronoS.j + 1}`;
+  const b = $('#sBarra'), f = acabou ? 1 : Math.max(0, resta / cronoS.total);
+  b.style.width = (acabou ? 100 : f * 100) + '%';
+  b.style.background = acabou ? 'linear-gradient(90deg, #8a1f08, #ff5a1f)' : `linear-gradient(90deg, #4a1406, hsl(${18 + 30 * f},100%,${45 + 20 * f}%))`;
+  atualizarBarras();
 }
-function concluirRitmo(reps){
-  const i = rit.i, j = rit.j, it = ativo.itens[i], sr = it.series[j];
-  cancelAnimationFrame(rit.raf); rit = null;
-  sr.reps = String(reps); delete sr.areps;
-  if (sr.kg === ''){ const u = ultimaVez(it.id), a = u && u.series[Math.min(j, u.series.length - 1)]; sr.kg = it.prog && +it.prog.kg ? it.prog.kg : a && +a.kg ? a.kg : '0'; }
-  sr.feito = true; sr.ts = Date.now();
-  const ultima = !ativo.itens.slice(i + 1).some(x => !x.fase) && it.series.every(x => x.feito);
-  guardarAtivo(true); fecharFolha(); atualizarCard(i);
-  const card = $('#ex' + i); if (card) Faiscas.de(card, 26);
-  if (!ultima) iniciarDescanso(it.desc);
+function ajustarCronoSerie(d){
+  if (!cronoS) return;
+  const total = Math.max(15000, Math.min(600000, cronoS.total + d)), real = total - cronoS.total;
+  cronoS.total = total; cronoS.fim += real; if (cronoS.fim > Date.now()) cronoS.avisado = false;
+  cfg.tSeries = Object.assign({}, cfg.tSeries || {}, {[cronoS.id]: total / 1000}); guardarCfg(true);
+  LS.set('cronoSerie', cronoS); desenharCronoSerie();
+  const bt = $(`#ex${cronoS.i} [data-acao="ritmo"]`); if (bt) bt.innerHTML = `${IC.ritmo} Ritmo ${fmtSeg(total / 1000)}`;
 }
-function pararRitmo(){ if (rit){ cancelAnimationFrame(rit.raf); rit = null; } try { window.speechSynthesis && speechSynthesis.cancel(); } catch(e){} }
 
 /* ---------- Exercícios ---------- */
 let exf = {eq: null, mus: '', cat: 'forca', q: '', outros: false};
@@ -1137,8 +1090,8 @@ function renderPerfil(){
       <div><h3>Duração habitual</h3><div class="chips" style="margin-top:8px">${[30, 45, 60, 75, 90].map(n => chip(cfg.duracao === n, 'pDur', n, n + ' min')).join('')}</div></div></div>
     <div class="placa rebites"><h2>O meu ginásio</h2><p class="suave peq" style="margin:-4px 0 12px">O equipamento que tens em casa. É este que aparece para escolheres ao acender a forja.</p>
       <div class="grelha">${EQUIP.filter(e => e.id !== 'corpo').map(e => tileEq(e, cfg.equip.includes(e.id), 'pEq')).join('')}</div></div>
-    <div class="placa rebites col"><h2>Ritmo das repetições</h2><p class="suave peq" style="margin:0">Segundos de cada fase no botão Ritmo do treino, para não fazeres as repetições depressa demais. Cada exercício pode ter o seu ritmo, mudado lá.</p>
-      <div class="ritmo-passos">${[['d', 'Descer'], ['pb', 'Pausa em baixo'], ['s', 'Subir'], ['pc', 'Pausa em cima']].map(([k, nome]) => `<div class="ritmo-passo"><span>${nome}</span><div class="linha"><button class="btn icone" data-acao="pRitmo" data-v="${k}" data-d="-1" aria-label="Menos">−</button><b>${ritmoBase()[k]} s</b><button class="btn icone" data-acao="pRitmo" data-v="${k}" data-d="1" aria-label="Mais">+</button></div></div>`).join('')}</div></div>
+    <div class="placa rebites col"><h2>Tempo da série</h2><p class="suave peq" style="margin:0">Ao tocares em Ritmo num exercício, conta deste tempo até zero: quando chegar a zero, a série devia estar acabada. Os botões −15 e +15 durante a série ajustam o tempo e ficam guardados para esse exercício.</p>
+      <div class="linha entre"><span class="suave">Tempo base</span><div class="linha"><button class="btn icone" data-acao="pTSerie" data-d="-15" aria-label="Menos 15 segundos">−</button><b class="cinzel" style="min-width:56px;text-align:center;font-size:18px;color:var(--ouro)">${fmtSeg(tSerieBase())}</b><button class="btn icone" data-acao="pTSerie" data-d="15" aria-label="Mais 15 segundos">+</button></div></div></div>
     <div class="placa rebites col"><h2>Aquecimento e alongamentos</h2><p class="suave peq" style="margin:0">Marca para virem sempre ligados ao acender a forja. Podes mudar antes de começar.</p>
       <div class="chips">${chip(cfg.aquecer === true, 'pAquecer', '', 'Aquecimento')}${chip(cfg.alongar === true, 'pAlongar', '', 'Alongamentos no fim')}</div></div>
     <div class="placa rebites col"><h2>Imagens sem internet</h2><p class="suave peq" style="margin:0">As imagens vêm da internet e ficam guardadas quando as vês. Para treinar sem rede, guarda já as dos exercícios que podes fazer (${nImg} imagens, cerca de ${Math.round(nImg * 38 / 1024)} MB).</p>
@@ -2113,16 +2066,14 @@ const ACOES = {
     guardarAtivo(true); fecharFolha(); renderTreino();
   },
   feito: marcarFeito,
-  ritmo(a){ folhaRitmo(+a.dataset.i); },
-  ritComecar(){ comecarRitmo(); },
-  ritPausa(){ if (!rit) return; const t = performance.now(); if (rit.estado === 'pausa'){ rit.t0 += t - rit.pausaEm; rit.estado = rit.antes; } else { rit.antes = rit.estado; rit.pausaEm = t; rit.estado = 'pausa'; $('#ritFase').textContent = 'Em pausa'; } $('#ritCtl').innerHTML = botoesRitmo(); },
-  ritFeita(){ if (!rit) return; if (!rit.rep) return toast('Ainda não completaste nenhuma repetição.'); concluirRitmo(rit.rep); },
-  ritPasso(a){ const k = a.dataset.v, v = Math.max(0, Math.min(10, rit.r[k] + +a.dataset.d)), novo = Object.assign({}, rit.r, {[k]: v}); if (!fasesRitmo(novo).length) return; rit.r = novo; guardarRitmoEx(); desenharRitmo(); },
-  ritOrdem(a){ rit.r.o = a.dataset.v; guardarRitmoEx(); desenharRitmo(); },
-  ritVoz(){ cfg.ritmoVoz = cfg.ritmoVoz !== true; guardarCfg(true); desenharRitmo(); },
-  ritAlvo(a){ rit.alvo = Math.max(1, Math.min(60, rit.alvo + +a.dataset.d)); desenharRitmo(); },
-  ritRepor(){ const r = Object.assign({}, cfg.ritmos || {}); delete r[rit.id]; cfg.ritmos = r; guardarCfg(true); rit.r = ritmoDe(rit.id); desenharRitmo(); },
-  pRitmo(a){ const r = ritmoBase(), k = a.dataset.v; r[k] = Math.max(0, Math.min(10, r[k] + +a.dataset.d)); if (!fasesRitmo(Object.assign({o: 'desce'}, r)).length) return; cfg.ritmo = r; guardarCfg(true); renderPerfil(); },
+  ritmo(a){ iniciarCronoSerie(+a.dataset.i); },
+  sMais(){ ajustarCronoSerie(15000); }, sMenos(){ ajustarCronoSerie(-15000); }, sParar(){ pararCronoSerie(); },
+  sFeita(){
+    if (!cronoS) return; const {i, j} = cronoS; pararCronoSerie();
+    if (vista !== 'vTreino') irPara('vTreino');
+    const bt = $(`#ex${i} [data-acao="feito"][data-j="${j}"]`); if (bt && !ativo.itens[i].series[j].feito) marcarFeito(bt);
+  },
+  pTSerie(a){ cfg.tSerie = Math.max(15, Math.min(600, tSerieBase() + +a.dataset.d)); guardarCfg(true); renderPerfil(); },
   maisSerie(a){ const it = ativo.itens[+a.dataset.i], u = it.series[it.series.length - 1]; it.series.push({kg: u ? u.kg : '', reps: u ? u.reps : '', feito: false, akg: 1, areps: 1}); guardarAtivo(true); atualizarCard(+a.dataset.i); },
   menosSerie(a){ const it = ativo.itens[+a.dataset.i]; if (it.series.length > 1){ it.series.pop(); guardarAtivo(true); atualizarCard(+a.dataset.i); } },
   tAdicionar(){ folhaSeletor('treino'); },

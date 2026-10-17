@@ -315,18 +315,9 @@ textarea { resize: vertical; min-height: 58px; }
 .graf-dica { position: absolute; top: 0; pointer-events: none; background: #120d0a; border: 1px solid var(--aresta); border-radius: 10px; padding: 6px 9px; font-size: 12px; max-width: 230px; box-shadow: 0 6px 16px rgba(0,0,0,.5); }
 .graf-dica b { display: block; color: var(--texto); font-weight: 600; } .graf-dica span { color: var(--suave); }
 @media (prefers-reduced-motion: reduce) { [data-hist].a-apagar::after { animation-duration: .01s; animation-delay: 4.4s; } }
-/* Ritmo da repetição */
-.ritmo-roda { position: relative; width: min(240px, 68vw); margin: 4px auto 12px; }
-.ritmo-roda svg { width: 100%; display: block; }
-.ritmo-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; }
-.ritmo-centro b { font-family: 'Cinzel', Georgia, serif; font-size: 24px; letter-spacing: .14em; text-transform: uppercase; color: var(--ouro); }
-.ritmo-centro #ritSeg { font-size: 50px; line-height: 1.05; color: var(--texto); }
-.ritmo-centro #ritRep { font-size: 13px; color: var(--suave); }
-.ritmo-ctl { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-.ritmo-cfg { display: flex; flex-direction: column; gap: 10px; }
-.ritmo-passos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.ritmo-passo { background: #1a1310; border: 1px solid var(--aresta); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
-.ritmo-passo span { font-size: 12.5px; color: var(--suave); }
-.ritmo-passo .linha { justify-content: space-between; }
-.ritmo-passo b { font-family: 'Cinzel', Georgia, serif; font-size: 18px; color: var(--ouro); }
-.ligacao { color: var(--chama); text-decoration: underline; cursor: pointer; }
+/* Cronómetro da série (botão Ritmo) */
+#cronoSerie { position: fixed; z-index: 22; left: 50%; transform: translateX(-50%); bottom: calc(68px + env(safe-area-inset-bottom)); width: min(528px, calc(100% - 32px));
+  border-radius: 14px; padding: 12px 14px; background: linear-gradient(180deg, #2a1f19, #17110d); border: 1px solid var(--aresta); box-shadow: var(--sombra); }
+#cronoSerie .tempo { font-family: 'Cinzel', Georgia, serif; font-size: 26px; min-width: 76px; }
+#cronoSerie.pronto { border-color: #ff5a1f; box-shadow: 0 0 30px rgba(255,90,30,.5); animation: pulsa 1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { #cronoSerie.pronto { animation: none; } }
