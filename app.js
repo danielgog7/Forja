@@ -150,11 +150,17 @@ const Faiscas = (() => {
   const c = $('#faiscas'), x = c.getContext('2d'), reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W = 0, H = 0, ps = [], ult = 0, corre = false, acum = 0;
   function tam(){ const d = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * d; c.height = H * d; x.setTransform(d, 0, 0, d, 0, 0); }
-  const nova = (px, py, vx, vy, vida, t, g) => ps.push({x: px, y: py, vx, vy, v: 0, vida, t, g});
-  function explosao(px, py, n = 26){
+  const nova = (px, py, vx, vy, vida, t, g, extra) => ps.push(Object.assign({x: px, y: py, vx, vy, v: 0, vida, t, g}, extra));
+  // riscos: faíscas de forja (traços rápidos que ressaltam na superfície "chao" = {y, x1, x2})
+  function explosao(px, py, n = 26, riscos = false, chao = null){
     for (let i = 0; i < n; i++){
-      const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.5, s = 110 + Math.random() * 280;
-      nova(px, py, Math.cos(a) * s, Math.sin(a) * s, .45 + Math.random() * .7, 1 + Math.random() * 1.7, 560);
+      if (riscos){
+        const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * (Math.random() < .7 ? 1.75 : 1.1), s = 160 + Math.random() * 460;
+        nova(px + (Math.random() - .5) * 12, py, Math.cos(a) * s, Math.sin(a) * s, .55 + Math.random() * 1.05, 1 + Math.random() * 1.6, 820, {r: 1, chao});
+      } else {
+        const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.5, s = 110 + Math.random() * 280;
+        nova(px, py, Math.cos(a) * s, Math.sin(a) * s, .45 + Math.random() * .7, 1 + Math.random() * 1.7, 560);
+      }
     }
     iniciar();
   }
@@ -167,6 +173,14 @@ const Faiscas = (() => {
       const p = ps[i]; p.v += dt; const f = p.v / p.vida;
       if (f >= 1 || p.y < -20){ ps.splice(i, 1); continue; }
       p.vy += p.g * dt; p.vx += Math.sin(p.v * 3 + i) * 8 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.r){
+        p.vx *= 1 - 1.2 * dt;
+        const k = p.chao; if (k && p.vy > 0 && p.y > k.y && p.x > k.x1 && p.x < k.x2 && p.y - p.vy * dt <= k.y + 2){ p.y = k.y; p.vy *= -.32; p.vx *= .75; }
+        x.strokeStyle = `hsla(${50 - 38 * f},100%,${92 - 40 * f}%,${1 - f * f})`; x.lineWidth = p.t * (1.25 - f * .6); x.lineCap = 'round';
+        x.beginPath(); x.moveTo(p.x - p.vx * .04, p.y - p.vy * .04); x.lineTo(p.x, p.y); x.stroke();
+        x.fillStyle = `hsla(30,100%,60%,${.18 * (1 - f)})`; x.beginPath(); x.arc(p.x, p.y, p.t * 3.2, 0, 7); x.fill();
+        continue;
+      }
       x.fillStyle = `hsla(${30 * (1 - f)},100%,${60 - 25 * f}%,${.13 * (1 - f)})`;
       x.beginPath(); x.arc(p.x, p.y, p.t * 4.2, 0, 7); x.fill();
       x.fillStyle = `hsla(${48 - 40 * f},100%,${90 - 45 * f}%,${1 - f * f})`;
@@ -819,10 +833,124 @@ function renderIntro(){
 }
 
 /* ---------- Capa: três marteladas para entrar ---------- */
-// O ferro da semana: cada treino molda o lingote até virar lâmina (meta = treinos por semana).
-const LINGOTE = [[138, 180], [142, 170], [212, 170], [216, 170], [220, 170], [222, 172], [222, 176], [222, 184], [222, 188], [220, 190], [216, 190], [212, 190], [142, 190]];
-const LAMINA = [[92, 183], [130, 176], [226, 176], [226, 166], [233, 166], [233, 179], [266, 179], [266, 187], [233, 187], [233, 200], [226, 200], [226, 190], [130, 190]];
-const formaPeca = f => 'M' + LINGOTE.map((p, i) => (p[0] + (LAMINA[i][0] - p[0]) * f).toFixed(1) + ' ' + (p[1] + (LAMINA[i][1] - p[1]) * f).toFixed(1)).join(' L') + ' Z';
+// O ferro da semana: cada treino molda a barra até virar lâmina (meta = treinos por semana).
+// Pontos correspondentes da barra (f = 0) e da lâmina (f = 1); a forma intermédia é interpolada.
+const BARRA = [[160, 184], [164, 184], [166, 184], [168, 184], [170, 184], [246, 184], [252, 189], [246, 194], [170, 194], [168, 194], [166, 194], [164, 194], [160, 194]];
+const LAMINA = [[112, 186], [140, 186], [140, 177], [147, 177], [147, 184], [285, 184], [312, 189], [285, 194], [147, 194], [147, 201], [140, 201], [140, 192], [112, 192]];
+const lerp = (a, b, f) => a + (b - a) * f;
+const formaPeca = f => 'M' + BARRA.map((p, i) => lerp(p[0], LAMINA[i][0], f).toFixed(1) + ' ' + lerp(p[1], LAMINA[i][1], f).toFixed(1)).join(' L') + ' Z';
+const BIGORNA = 'M58 208Q90 199 126 202L140 202L140 196L322 196Q330 196 330 202L330 206Q326 214 300 218Q268 222 262 236Q256 252 268 260L300 264Q308 266 308 272L116 272Q116 266 124 264L156 260Q168 252 162 236Q156 222 128 218Q96 214 58 208Z';
+const PIVO = '380px 155px', IMPACTO = [215, 184];
+function cenaForja(f){
+  const jx = lerp(160, 112, f), cx = lerp(206, 212, f), meia = lerp(40, 92, f);
+  const chamas = [[86, 46, 1], [104, 58, .9], [122, 50, 1.1], [140, 40, .8], [96, 34, .7]].map(([x, h, e], i) =>
+    `<path class="cChama" style="transform-origin:${x}px 196px" d="M${x - 11 * e} 196Q${x - 13 * e} ${196 - h * .55} ${x} ${196 - h}Q${x + 13 * e} ${196 - h * .55} ${x + 11 * e} 196Z" fill="url(#gChama)" opacity="${.75 - i * .06}"/>`).join('');
+  const brasas = [[62, 195, 7], [78, 198, 9], [96, 194, 8], [114, 198, 10], [132, 195, 8], [150, 198, 7], [88, 200, 6], [124, 201, 7]].map(([x, y, r]) =>
+    `<circle class="cCarvao" cx="${x}" cy="${y + 3}" r="${r * .7}" fill="url(#gCarvao)" opacity=".8"/>`).join('');
+  const pedras = [[2, 52, 46, 22], [50, 50, 52, 20], [106, 48, 50, 22], [160, 52, 46, 20], [0, 78, 30, 26], [170, 76, 34, 24], [0, 108, 28, 28], [174, 104, 32, 28],
+    [0, 140, 30, 26], [172, 136, 34, 28], [0, 170, 28, 30], [176, 168, 30, 30]].map(([x, y, w, h]) =>
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="#211813" stroke="#0d0907" stroke-width="2"/>`).join('');
+  return `<svg viewBox="0 36 400 290" id="cCena" aria-label="Bigorna com ferro em brasa">
+  <defs>
+    <radialGradient id="gFogo" cx="50%" cy="100%" r="90%"><stop offset="0" stop-color="#fff1cf"/><stop offset=".18" stop-color="#ffc861"/><stop offset=".4" stop-color="#ff7a1c"/><stop offset=".7" stop-color="#8a1f08"/><stop offset="1" stop-color="#2a0c05"/></radialGradient>
+    <linearGradient id="gChama" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#fff1cf"/><stop offset=".25" stop-color="#ffc861"/><stop offset=".6" stop-color="#ff6a1a"/><stop offset="1" stop-color="#b3260e" stop-opacity="0"/></linearGradient>
+    <radialGradient id="gCarvao" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="#ffe39a"/><stop offset=".35" stop-color="#ff8a24"/><stop offset=".75" stop-color="#9a2a0a"/><stop offset="1" stop-color="#2a0d05"/></radialGradient>
+    <radialGradient id="gLuzForja" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".55"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gChao" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1511" stop-opacity="0"/><stop offset=".22" stop-color="#1d1511"/><stop offset="1" stop-color="#0b0806"/></linearGradient>
+    <radialGradient id="gLuzChao" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".35"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gToco" x1="0" x2="1"><stop offset="0" stop-color="#1a0f08"/><stop offset=".25" stop-color="#4a2e1a"/><stop offset=".45" stop-color="#6a4428"/><stop offset=".75" stop-color="#3a2414"/><stop offset="1" stop-color="#140b06"/></linearGradient>
+    <radialGradient id="gTocoTopo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#a87a50"/><stop offset=".6" stop-color="#7a5234"/><stop offset="1" stop-color="#4a2e1a"/></radialGradient>
+    <linearGradient id="gBigorna" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57504b"/><stop offset=".12" stop-color="#36302d"/><stop offset=".55" stop-color="#1c1816"/><stop offset="1" stop-color="#0c0a09"/></linearGradient>
+    <linearGradient id="gBigornaLado" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".3" stop-color="#000" stop-opacity="0"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></linearGradient>
+    <linearGradient id="gTopo" x1="0" x2="1"><stop offset="0" stop-color="#6d655f"/><stop offset=".45" stop-color="#b0a59d"/><stop offset=".6" stop-color="#d8cdc4"/><stop offset="1" stop-color="#6d655f"/></linearGradient>
+    <radialGradient id="gReflexo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffd27a" stop-opacity=".95"/><stop offset=".4" stop-color="#ff8a2a" stop-opacity=".5"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gAquecido" cx="30%" cy="0%" r="80%"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".45"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gMetal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff8e4"/><stop offset=".25" stop-color="#ffe08f"/><stop offset=".55" stop-color="#ffa13c"/><stop offset=".8" stop-color="#e2541b"/><stop offset="1" stop-color="#8a2208"/></linearGradient>
+    <linearGradient id="gMetalPontas" x1="0" x2="1"><stop offset="0" stop-color="#6a1405" stop-opacity=".9"/><stop offset=".28" stop-color="#6a1405" stop-opacity="0"/><stop offset=".72" stop-color="#6a1405" stop-opacity="0"/><stop offset="1" stop-color="#6a1405" stop-opacity=".9"/></linearGradient>
+    <linearGradient id="gCabeca" x1="0" x2="1"><stop offset="0" stop-color="#1a1614"/><stop offset=".22" stop-color="#4a423d"/><stop offset=".46" stop-color="#9b908a"/><stop offset=".54" stop-color="#d6ccc4"/><stop offset=".72" stop-color="#6d625b"/><stop offset="1" stop-color="#211c19"/></linearGradient>
+    <linearGradient id="gCabecaBaixo" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#ff8a2a" stop-opacity="0"/><stop offset="1" stop-color="#ff8a2a" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="gCabo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c08a55"/><stop offset=".35" stop-color="#8f5e36"/><stop offset=".8" stop-color="#5a3720"/><stop offset="1" stop-color="#341e10"/></linearGradient>
+    <linearGradient id="gTenaz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a605a"/><stop offset=".5" stop-color="#2c2623"/><stop offset="1" stop-color="#110e0c"/></linearGradient>
+    <radialGradient id="gClarao" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffffff"/><stop offset=".2" stop-color="#fff1cf"/><stop offset=".5" stop-color="#ffb347" stop-opacity=".7"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gRasto" gradientUnits="userSpaceOnUse" x1="240" y1="68" x2="215" y2="160"><stop offset="0" stop-color="#ffd9b0" stop-opacity="0"/><stop offset="1" stop-color="#ffd9b0" stop-opacity=".5"/></linearGradient>
+    <filter id="fB1" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    <filter id="fB3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="fB6" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="fB14" x="-80%" y="-200%" width="260%" height="500%"><feGaussianBlur stdDeviation="14"/></filter>
+    <filter id="fGrao" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="1.7" numOctaves="2" seed="7" result="r"/>
+      <feColorMatrix in="r" type="matrix" values="0 0 0 0 .62  0 0 0 0 .56  0 0 0 0 .52  0 0 0 1.4 -.62" result="n"/><feComposite in="n" in2="SourceGraphic" operator="in"/></filter>
+    <radialGradient id="gMascara" gradientUnits="userSpaceOnUse" cx="98" cy="150" r="175"><stop offset=".45" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient>
+    <mask id="mParede" maskUnits="userSpaceOnUse" x="-80" y="0" width="400" height="260"><rect x="-80" y="0" width="400" height="260" fill="url(#gMascara)"/></mask>
+    <clipPath id="cpBigorna"><path d="${BIGORNA}"/></clipPath>
+    <clipPath id="cpBoca"><path d="M40 202L40 128Q40 84 98 84Q156 84 156 128L156 202Z"/></clipPath>
+  </defs>
+
+  <g filter="url(#fB1)" opacity=".95" mask="url(#mParede)">
+    <path d="M-40 202L-40 44L210 44L210 202Z" fill="#17110d"/>
+    ${pedras}
+    <ellipse cx="98" cy="150" rx="110" ry="90" fill="url(#gLuzForja)"/>
+    <g clip-path="url(#cpBoca)"><rect x="30" y="80" width="140" height="130" fill="url(#gFogo)"/>${chamas}${brasas}</g>
+    <path d="M40 202L40 128Q40 84 98 84Q156 84 156 128L156 202" fill="none" stroke="#ff9a3c" stroke-width="3" opacity=".55" filter="url(#fB3)"/>
+    <path d="M40 202L40 128Q40 84 98 84Q156 84 156 128L156 202" fill="none" stroke="#0d0907" stroke-width="4"/>
+  </g>
+
+  <rect x="-60" y="232" width="520" height="110" fill="url(#gChao)"/>
+  <ellipse cx="212" cy="272" rx="190" ry="26" fill="url(#gLuzChao)"/>
+
+  <path d="M120 270L120 340L304 340L304 270Z" fill="url(#gToco)"/>
+  <path d="M138 280Q134 305 140 335M168 276Q172 300 166 335M196 282Q192 310 198 335M234 280Q238 305 232 335M262 278Q258 304 264 335M288 282Q292 306 286 335" stroke="#140b06" stroke-width="2.2" fill="none" opacity=".7"/>
+  <ellipse cx="212" cy="270" rx="92" ry="12" fill="url(#gTocoTopo)"/>
+  <ellipse cx="212" cy="270" rx="66" ry="8.5" fill="none" stroke="#4a2e1a" stroke-width="1.2" opacity=".7"/>
+  <ellipse cx="212" cy="270" rx="38" ry="5" fill="none" stroke="#4a2e1a" stroke-width="1.2" opacity=".7"/>
+
+  <path d="${BIGORNA}" fill="url(#gBigorna)"/>
+  <g clip-path="url(#cpBigorna)">
+    <rect x="50" y="190" width="290" height="90" fill="url(#gBigornaLado)"/>
+    <rect x="50" y="190" width="290" height="90" fill="url(#gAquecido)"/>
+    <ellipse cx="${cx}" cy="204" rx="${meia + 30}" ry="16" fill="url(#gReflexo)" opacity=".55" filter="url(#fB6)"/>
+  </g>
+  <path d="${BIGORNA}" fill="#000" filter="url(#fGrao)" opacity=".14"/>
+  <path d="M58 208Q90 199 126 202L140 202L140 197L130 197Q94 195 63 206Z" fill="url(#gTopo)" opacity=".55"/>
+  <path d="M140 196L322 196L317 190L145 190Z" fill="url(#gTopo)"/>
+  <path d="M140 196L322 196" stroke="#efe4da" stroke-width="1" opacity=".55"/>
+  <rect x="298" y="191.2" width="9" height="3.6" rx=".6" fill="#0b0908"/><ellipse cx="286" cy="193" rx="2.6" ry="1.6" fill="#0b0908"/>
+  <ellipse cx="${cx}" cy="193" rx="${meia + 26}" ry="5" fill="url(#gReflexo)" filter="url(#fB3)"/>
+
+  <ellipse id="cBrilho" cx="${cx}" cy="186" rx="${meia + 40}" ry="22" fill="#ff7a1c" opacity=".45" filter="url(#fB14)"/>
+  <path id="cPecaBrilho" d="${formaPeca(f)}" fill="#ff9a3c" filter="url(#fB3)" opacity=".9"/>
+  <path id="cPeca" d="${formaPeca(f)}" fill="url(#gMetal)"/>
+  <path d="${formaPeca(f)}" fill="url(#gMetalPontas)"/>
+  <ellipse cx="${cx + 4}" cy="187" rx="${meia * .66}" ry="2.2" fill="#fffdf2" opacity=".95" filter="url(#fB1)"/>
+
+  <g>
+    <path d="M${jx + 9} 183.5Q${jx - 4} 179 ${jx - 20} 179L-40 126" fill="none" stroke="url(#gTenaz)" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M${jx + 9} 194.5Q${jx - 6} 199 ${jx - 22} 186L-40 140" fill="none" stroke="url(#gTenaz)" stroke-width="4.5" stroke-linecap="round"/>
+    <circle cx="${jx - 21}" cy="182.5" r="3.6" fill="#5a504a" stroke="#0d0b0a" stroke-width="1"/>
+    <ellipse cx="${jx + 6}" cy="189" rx="10" ry="8" fill="#ff8a2a" opacity=".35" filter="url(#fB3)"/>
+  </g>
+
+  <path id="cRasto" d="M246 72A165 165 0 0 0 215 155" fill="none" stroke="url(#gRasto)" stroke-width="34" stroke-linecap="round" opacity="0" filter="url(#fB3)"/>
+  <g id="cMarteloIdle" style="transform-origin:${PIVO}">
+    <g id="cMartelo" style="transform-origin:${PIVO};transform:rotate(32deg)">
+      <path d="M190 151L420 146L420 162L190 160Z" fill="url(#gCabo)"/>
+      <path d="M238 153.5Q320 151.5 418 150M240 157.5Q330 157 418 156.5" stroke="#3a2212" stroke-width=".8" fill="none" opacity=".55"/>
+      <path d="M199 184L231 184L234 180L234 162Q234 158 232 156L228 140L222 128L208 128L202 140L198 156Q196 158 196 162L196 180Z" fill="url(#gCabeca)"/>
+      <path d="M199 184L231 184L234 180L234 162Q234 158 232 156L228 140L222 128L208 128L202 140L198 156Q196 158 196 162L196 180Z" fill="url(#gCabecaBaixo)"/>
+      <path d="M208 128L222 128" stroke="#e9e0d8" stroke-width="1.2" opacity=".7"/>
+      <path d="M196 180L234 180" stroke="#cfc4bb" stroke-width=".8" opacity=".5"/>
+    </g>
+  </g>
+  <ellipse id="cOnda" cx="${IMPACTO[0]}" cy="191" rx="50" ry="7" fill="none" stroke="#ffd27a" stroke-width="2.5" opacity="0" style="transform-origin:${IMPACTO[0]}px 191px"/>
+  <circle id="cClarao" cx="${IMPACTO[0]}" cy="${IMPACTO[1]}" r="34" fill="url(#gClarao)" opacity="0" style="transform-origin:${IMPACTO[0]}px ${IMPACTO[1]}px"/>
+</svg>`;
+}
+function animarCena(){
+  const anima = (el, k, o) => el && el.animate(k, Object.assign({iterations: Infinity, direction: 'alternate', easing: 'ease-in-out'}, o));
+  document.querySelectorAll('#capa .cChama').forEach((c, i) => anima(c, [{transform: 'scaleY(.82) scaleX(1.05)', opacity: .55}, {transform: 'scaleY(1.12) scaleX(.94)', opacity: .9}], {duration: 520 + i * 170, delay: -i * 230}));
+  document.querySelectorAll('#capa .cCarvao').forEach((c, i) => anima(c, [{opacity: .7}, {opacity: 1}], {duration: 700 + (i % 3) * 400, delay: -i * 300}));
+  anima($('#cBrilho'), [{opacity: .35}, {opacity: .55}], {duration: 1800});
+  anima($('#cMarteloIdle'), [{transform: 'rotate(0deg)'}, {transform: 'rotate(-2.5deg)'}], {duration: 1400});
+}
 let golpes = 0, capaAberta = false, escondidoEm = 0, actx = null;
 function mostrarCapa(forcar){
   if (!cfg.pronto || (!forcar && (cfg.capa === false || ativo))) return;
@@ -840,26 +968,7 @@ function renderCapa(){
       <h1 style="font-size:22px;margin-top:14px;color:var(--texto);letter-spacing:.04em">${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h1>
       ${sug ? `<p class="suave peq" style="margin:6px 0 0">Hoje: <b style="color:var(--ouro)">${TIPOS[sug.tipo].nome}</b>, ${esc(sug.motivo)}</p>` : ''}</div>
     <div class="cena">
-      <svg viewBox="16 52 336 226" id="cCena" aria-label="Bigorna com ferro em brasa">
-        <defs>
-          <linearGradient id="cQuente" gradientUnits="userSpaceOnUse" x1="90" x2="270"><stop offset="0" stop-color="#8a1f08"/><stop offset=".22" stop-color="#e2541b"/><stop offset=".42" stop-color="#ffb347"/><stop offset=".55" stop-color="#fff1cf"/><stop offset=".7" stop-color="#ffb347"/><stop offset="1" stop-color="#c2310c"/></linearGradient>
-          <linearGradient id="cFerro" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a6658"/><stop offset=".1" stop-color="#4c3e35"/><stop offset="1" stop-color="#191310"/></linearGradient>
-          <linearGradient id="cCabeca" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8d7b6e"/><stop offset=".45" stop-color="#4a3d35"/><stop offset="1" stop-color="#231b17"/></linearGradient>
-          <linearGradient id="cCabo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a33"/><stop offset="1" stop-color="#4a2c17"/></linearGradient>
-          <filter id="cBlur" x="-60%" y="-200%" width="220%" height="500%"><feGaussianBlur stdDeviation="12"/></filter>
-          <filter id="cBlur2" x="-30%" y="-100%" width="160%" height="300%"><feGaussianBlur stdDeviation="3"/></filter>
-        </defs>
-        <ellipse id="cBrilho" cx="180" cy="184" rx="${110 + 40 * f}" ry="30" fill="#ff7a1c" opacity=".45" filter="url(#cBlur)"/>
-        <path d="M70 190H290Q306 190 306 204V212H252Q238 212 234 226L226 252H256Q266 252 266 262V272H96V262Q96 252 106 252H136L128 226Q124 212 110 212H70Q40 212 28 192Q50 194 70 190Z" fill="url(#cFerro)"/>
-        <path d="M70 190H290Q306 190 306 204" fill="none" stroke="#a08877" stroke-width="1.5" opacity=".6"/>
-        <path id="cPecaBrilho" d="${formaPeca(f)}" fill="url(#cQuente)" filter="url(#cBlur2)" opacity=".85"/>
-        <path id="cPeca" d="${formaPeca(f)}" fill="url(#cQuente)"/>
-        <g id="cMartelo" style="transform-origin:330px 154px;transform:rotate(28deg)">
-          <rect x="204" y="150" width="132" height="8" rx="4" fill="url(#cCabo)"/>
-          <rect x="166" y="136" width="40" height="32" rx="4" fill="url(#cCabeca)"/>
-          <rect x="166" y="136" width="40" height="5" rx="2" fill="#a8968a" opacity=".5"/>
-        </g>
-      </svg>
+      ${cenaForja(f)}
       <h2 style="margin-top:4px">${pronta ? 'Lâmina forjada esta semana' : 'A peça da semana'}</h2>
       <p class="suave peq" style="margin:4px 0 0">${feitos} de ${cfg.dias} treinos${pronta ? '. Bom trabalho, ferreiro.' : '. Cada treino molda o ferro até virar lâmina.'}</p>
     </div>
@@ -869,28 +978,33 @@ function renderCapa(){
       <div class="golpes" id="cGolpes"><i></i><i></i><i></i></div>
       <p class="suave peq" id="cDica" style="margin:0">Dá três marteladas para entrar</p>
     </div>`;
-  $('#cBrilho').animate([{opacity: .35}, {opacity: .55}], {duration: 1800, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out'});
+  animarCena();
 }
 function golpe(){
   if (!capaAberta || golpes >= 3) return;
   const n = ++golpes, m = $('#cMartelo');
   m.getAnimations().forEach(a => a.cancel());
-  m.animate([{transform: 'rotate(28deg)'}, {transform: 'rotate(44deg)', offset: .38}, {transform: 'rotate(-1deg)', offset: .6}, {transform: 'rotate(6deg)', offset: .72}, {transform: 'rotate(28deg)'}],
-    {duration: 480, easing: 'ease-in-out'});
-  clang(n === 3, .27);
-  setTimeout(() => impacto(n), 288);
+  m.animate([{transform: 'rotate(32deg)'}, {transform: 'rotate(48deg)', offset: .36}, {transform: 'rotate(-.5deg)', offset: .58}, {transform: 'rotate(7deg)', offset: .7}, {transform: 'rotate(32deg)'}],
+    {duration: 520, easing: 'ease-in-out'});
+  $('#cRasto').animate([{opacity: 0}, {opacity: 0, offset: .38}, {opacity: .7, offset: .5}, {opacity: 0, offset: .62}, {opacity: 0}], {duration: 520});
+  clang(n === 3, .3);
+  setTimeout(() => impacto(n), 300);
 }
 function impacto(n){
   const svgEl = $('#cCena'); if (!svgEl) return;
-  const pt = svgEl.createSVGPoint(); pt.x = 186; pt.y = 172;
+  const pt = svgEl.createSVGPoint(); pt.x = IMPACTO[0]; pt.y = IMPACTO[1];
   const p = pt.matrixTransform(svgEl.getScreenCTM());
-  Faiscas.explosao(p.x, p.y, n === 3 ? 90 : 34);
+  const ecra = (x, y) => { const q = svgEl.createSVGPoint(); q.x = x; q.y = y; return q.matrixTransform(svgEl.getScreenCTM()); };
+  const a = ecra(145, 190), b = ecra(317, 190);
+  Faiscas.explosao(p.x, p.y, n === 3 ? 140 : 60, true, {y: a.y, x1: a.x, x2: b.x});
   vibrar(n === 3 ? [60, 40, 90] : 35);
-  $('#capa').animate([{transform: 'translate(0,0)'}, {transform: 'translate(-4px,3px)'}, {transform: 'translate(3px,-2px)'}, {transform: 'translate(0,0)'}], {duration: 170});
-  ['#cPeca', '#cPecaBrilho'].forEach(s => $(s).animate([{filter: 'brightness(2.2)'}, {filter: 'brightness(1)'}], {duration: n === 3 ? 900 : 450, easing: 'ease-out'}));
+  $('#capa').animate([{transform: 'translate(0,0)'}, {transform: 'translate(-5px,4px)'}, {transform: 'translate(4px,-3px)'}, {transform: 'translate(-2px,1px)'}, {transform: 'translate(0,0)'}], {duration: 200});
+  $('#cClarao').animate([{opacity: 1, transform: 'scale(.3)'}, {opacity: 0, transform: `scale(${n === 3 ? 2.6 : 1.7})`}], {duration: n === 3 ? 420 : 260, easing: 'ease-out'});
+  $('#cOnda').animate([{opacity: .9, transform: 'scale(.15,.4)'}, {opacity: 0, transform: `scale(${n === 3 ? 2.2 : 1.5},1.1)`}], {duration: 380, easing: 'ease-out'});
+  ['#cPeca', '#cPecaBrilho'].forEach(s => $(s).animate([{filter: 'brightness(1.9)'}, {filter: 'brightness(1)'}], {duration: n === 3 ? 900 : 450, easing: 'ease-out'}));
   document.querySelectorAll('#cGolpes i').forEach((d, i) => d.classList.toggle('on', i < n));
   $('#cDica').textContent = n === 1 ? 'Mais duas…' : n === 2 ? 'Mais uma!' : 'O ferro está pronto.';
-  if (n >= 3) setTimeout(fecharCapa, 700);
+  if (n >= 3) setTimeout(fecharCapa, 750);
 }
 function fecharCapa(){
   capaAberta = false; const c = $('#capa'); c.classList.add('sair');
