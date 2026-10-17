@@ -209,17 +209,29 @@ ul.dicas { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
 .estat b { display: block; font-family: 'Cinzel', Georgia, serif; font-size: 20px; color: var(--ouro); }
 .estat span { font-size: 11.5px; color: var(--suave); }
 /* Capa */
-#capa { position: fixed; inset: 0; z-index: 45; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 14px;
-  padding: calc(env(safe-area-inset-top) + 26px) 20px calc(env(safe-area-inset-bottom) + 28px); text-align: center; cursor: pointer;
+#capa { position: fixed; inset: 0; z-index: 45; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 10px;
+  padding: calc(env(safe-area-inset-top) + 26px) 20px calc(env(safe-area-inset-bottom) + 26px); text-align: center; cursor: pointer;
   user-select: none; -webkit-user-select: none; touch-action: manipulation; outline: none;
-  background: radial-gradient(75% 40% at 50% 55%, rgba(255,110,30,.26), rgba(120,30,8,.10) 55%, transparent 75%),
-              radial-gradient(120% 55% at 50% 118%, rgba(255,90,20,.28), transparent 60%), var(--fundo);
+  background: radial-gradient(55% 30% at 32% 50%, rgba(255,110,30,.13), transparent 70%), radial-gradient(130% 50% at 50% 118%, rgba(255,80,20,.12), transparent 60%), #030201;
+  box-shadow: inset 0 0 140px 50px rgba(0,0,0,.9);
   transition: opacity .5s ease, transform .5s ease; }
+#cLuz { position: absolute; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: screen; z-index: 3; }
+.capa-topo { position: relative; z-index: 2; }
+.capa-marca { font-family: 'Cinzel', Georgia, serif; font-size: 26px; letter-spacing: .42em; padding-left: .42em; filter: drop-shadow(0 0 16px rgba(255,120,30,.55)); }
+.capa-ola { font-size: 17px; margin-top: 10px; color: #cdb9a5; letter-spacing: .12em; font-weight: 700; }
+.capa-sug { margin: 8px auto 0; max-width: 300px; font-size: 13px; line-height: 1.45; color: #8f7b6a; }
+.capa-sug b { color: var(--ouro); font-family: 'Cinzel', Georgia, serif; letter-spacing: .04em; }
+.capa-peca { margin-top: 2px; letter-spacing: .2em; text-shadow: 0 0 14px rgba(255,140,40,.45); }
+.capa-dica { margin: 0; font-family: 'Cinzel', Georgia, serif; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: #c9a27a; animation: dicaPulsa 1.8s ease-in-out infinite; }
+@keyframes dicaPulsa { 50% { opacity: .45; } }
+#capa .luzFogo { animation: luzFogo 2.6s steps(1) infinite, luzSuave 1.3s ease-in-out infinite alternate; }
+@keyframes luzFogo { 0% { opacity: .85; } 17% { opacity: 1; } 31% { opacity: .72; } 46% { opacity: .95; } 63% { opacity: .78; } 81% { opacity: 1; } }
+@keyframes luzSuave { to { filter: brightness(1.15); } }
 #capa.sair { opacity: 0; transform: scale(1.06); pointer-events: none; }
 #capa .cena { width: calc(100% + 40px); max-width: 520px; margin: 0 -20px; }
 #capa .cena svg { width: 100%; height: auto; display: block; overflow: visible; }
 #capa .infos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-#capa .infos div { background: rgba(26,19,16,.82); border: 1px solid var(--aresta); border-radius: 12px; padding: 9px 4px; font-size: 11.5px; color: var(--suave); }
+#capa .infos div { background: rgba(12,8,6,.78); border: 1px solid #2a1f18; border-radius: 12px; padding: 9px 4px; font-size: 11.5px; color: var(--suave); }
 #capa .infos b { display: block; color: var(--ouro); font-family: 'Cinzel', Georgia, serif; font-size: 15px; margin-top: 3px; }
 #capa .golpes { display: flex; gap: 16px; justify-content: center; margin: 18px 0 10px; }
 #capa .golpes i { width: 13px; height: 13px; transform: rotate(45deg); border: 1.5px solid #7a3a18; background: #1a110c; transition: all .2s; }
@@ -267,5 +279,6 @@ textarea { resize: vertical; min-height: 58px; }
 .legenda-calor { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--apagado); margin-top: 4px; }
 .legenda-calor i { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #3a3330, #6a3a2a, #b8461a, #f2701f, #ffbe55, #fff8e6); box-shadow: 0 0 8px rgba(255,120,30,.25); }
 .calor-info { margin-top: 10px; min-height: 34px; }
+@media (prefers-reduced-motion: reduce) { .capa-dica, #capa .luzFogo { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .corpo .aquece, .corpo .brasa-musc { animation: none; } }
 @media (prefers-reduced-motion: reduce) { #lareira, .brasas i.acesa, #descanso.pronto, .placa.brasa::after, .opcao.on::after, .placa.acende::before { animation: none; } }

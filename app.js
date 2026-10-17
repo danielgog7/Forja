@@ -193,6 +193,12 @@ const Faiscas = (() => {
   let W = 0, H = 0, ps = [], ult = 0, corre = false, acum = 0;
   function tam(){ const d = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * d; c.height = H * d; x.setTransform(d, 0, 0, d, 0, 0); }
   const nova = (px, py, vx, vy, vida, t, g, extra) => ps.push(Object.assign({x: px, y: py, vx, vy, v: 0, vida, t, g}, extra));
+  let emissor = null;
+  const textura = cores => { const k = document.createElement('canvas'); k.width = k.height = 64; const g = k.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    cores.forEach(([o, c]) => r.addColorStop(o, c)); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return k; };
+  const BRILHO = textura([[0, 'rgba(255,214,150,1)'], [.25, 'rgba(255,140,50,.55)'], [.6, 'rgba(255,90,20,.15)'], [1, 'rgba(255,60,10,0)']]);
+  const FUMO = textura([[0, 'rgba(120,110,104,.55)'], [.5, 'rgba(80,72,68,.22)'], [1, 'rgba(60,55,52,0)']]);
+  const sprite = (img, px, py, raio, alfa) => { if (alfa <= .003) return; x.globalAlpha = Math.min(1, alfa); x.drawImage(img, px - raio, py - raio, raio * 2, raio * 2); x.globalAlpha = 1; };
   // riscos: faíscas de forja (traços rápidos que ressaltam na superfície "chao" = {y, x1, x2})
   function explosao(px, py, n = 26, riscos = false, chao = null, forca = 1){
     for (let i = 0; i < n; i++){
@@ -209,12 +215,21 @@ const Faiscas = (() => {
   function passo(t){
     const dt = Math.min(.05, (t - ult) / 1000 || .016); ult = t;
     x.clearRect(0, 0, W, H);
+    if (emissor && !reduz) emissor(dt, nova);
     if (!reduz){ acum += dt; while (acum > .24){ acum -= .24; if (ps.length < 70) nova(Math.random() * W, H + 4, (Math.random() - .5) * 14, -(22 + Math.random() * 46), 3 + Math.random() * 4.5, .7 + Math.random() * 1.5, -3); } }
     x.globalCompositeOperation = 'lighter';
     for (let i = ps.length - 1; i >= 0; i--){
       const p = ps[i]; p.v += dt; const f = p.v / p.vida;
       if (f >= 1 || p.y < -20){ ps.splice(i, 1); continue; }
-      p.vy += p.g * dt; p.vx += Math.sin(p.v * 3 + i) * 8 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      p.vy += p.g * dt; p.vx += Math.sin(p.v * 3 + i) * (p.fumo || p.bk ? 3 : 8) * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.fumo){ x.globalCompositeOperation = 'source-over'; sprite(FUMO, p.x, p.y, p.t * (1 + f * 1.6), .3 * Math.sin(Math.PI * f)); x.globalCompositeOperation = 'lighter'; continue; }
+      if (p.bk){ sprite(BRILHO, p.x, p.y, p.t, .12 * Math.sin(Math.PI * f)); continue; }
+      if (p.a){
+        const pisca = .6 + .4 * Math.sin(p.v * 26 + i), alfa = (1 - f * f) * pisca;
+        x.strokeStyle = `hsla(${46 - 30 * f},100%,${88 - 35 * f}%,${alfa})`; x.lineWidth = p.t; x.lineCap = 'round';
+        x.beginPath(); x.moveTo(p.x - p.vx * .04, p.y - p.vy * .04); x.lineTo(p.x, p.y); x.stroke();
+        sprite(BRILHO, p.x, p.y, p.t * 6, .4 * alfa); continue;
+      }
       if (p.r){
         p.vx *= 1 - 1.2 * dt;
         const k = p.chao; if (k && p.vy > 0 && p.y > k.y && p.x > k.x1 && p.x < k.x2 && p.y - p.vy * dt <= k.y + 2){ p.y = k.y; p.vy *= -.32; p.vx *= .75; }
@@ -236,7 +251,7 @@ const Faiscas = (() => {
   addEventListener('resize', tam);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) iniciar(); });
   tam(); iniciar();
-  return {explosao, de(el, n){ if (!el) return; const r = el.getBoundingClientRect(); explosao(r.left + r.width / 2, r.top + r.height / 2, n); }};
+  return {explosao, emissor(f){ emissor = f; if (f) iniciar(); }, de(el, n){ if (!el) return; const r = el.getBoundingClientRect(); explosao(r.left + r.width / 2, r.top + r.height / 2, n); }};
 })();
 
 /* ---------- Gerador de treinos ---------- */
@@ -1287,17 +1302,17 @@ function cenaForja(f){
     `<circle class="cCarvao" cx="${x}" cy="${y + 3}" r="${r * .7}" fill="url(#gCarvao)" opacity=".8"/>`).join('');
   const pedras = [[2, 52, 46, 22], [50, 50, 52, 20], [106, 48, 50, 22], [160, 52, 46, 20], [0, 78, 30, 26], [170, 76, 34, 24], [0, 108, 28, 28], [174, 104, 32, 28],
     [0, 140, 30, 26], [172, 136, 34, 28], [0, 170, 28, 30], [176, 168, 30, 30]].map(([x, y, w, h]) =>
-    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="#211813" stroke="#0d0907" stroke-width="2"/>`).join('');
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="#130e0b" stroke="#060403" stroke-width="2"/>`).join('');
   return `<svg viewBox="0 36 400 290" id="cCena" aria-label="Bigorna com ferro em brasa">
   <defs>
     <radialGradient id="gFogo" cx="50%" cy="100%" r="90%"><stop offset="0" stop-color="#fff1cf"/><stop offset=".18" stop-color="#ffc861"/><stop offset=".4" stop-color="#ff7a1c"/><stop offset=".7" stop-color="#8a1f08"/><stop offset="1" stop-color="#2a0c05"/></radialGradient>
     <linearGradient id="gChama" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#fff1cf"/><stop offset=".25" stop-color="#ffc861"/><stop offset=".6" stop-color="#ff6a1a"/><stop offset="1" stop-color="#b3260e" stop-opacity="0"/></linearGradient>
     <radialGradient id="gCarvao" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="#ffe39a"/><stop offset=".35" stop-color="#ff8a24"/><stop offset=".75" stop-color="#9a2a0a"/><stop offset="1" stop-color="#2a0d05"/></radialGradient>
     <radialGradient id="gLuzForja" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".55"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
-    <linearGradient id="gChao" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1511" stop-opacity="0"/><stop offset=".22" stop-color="#1d1511"/><stop offset="1" stop-color="#0b0806"/></linearGradient>
+    <linearGradient id="gChao" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d1511" stop-opacity="0"/><stop offset=".22" stop-color="#0e0a08"/><stop offset="1" stop-color="#040302"/></linearGradient>
     <radialGradient id="gLuzChao" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ff8a2a" stop-opacity=".35"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></radialGradient>
-    <linearGradient id="gToco" x1="0" x2="1"><stop offset="0" stop-color="#1a0f08"/><stop offset=".25" stop-color="#4a2e1a"/><stop offset=".45" stop-color="#6a4428"/><stop offset=".75" stop-color="#3a2414"/><stop offset="1" stop-color="#140b06"/></linearGradient>
-    <radialGradient id="gTocoTopo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#a87a50"/><stop offset=".6" stop-color="#7a5234"/><stop offset="1" stop-color="#4a2e1a"/></radialGradient>
+    <linearGradient id="gToco" x1="0" x2="1"><stop offset="0" stop-color="#0c0704"/><stop offset=".25" stop-color="#2a1a0f"/><stop offset=".45" stop-color="#3e2817"/><stop offset=".75" stop-color="#21140b"/><stop offset="1" stop-color="#140b06"/></linearGradient>
+    <radialGradient id="gTocoTopo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#7a5636"/><stop offset=".6" stop-color="#4e3420"/><stop offset="1" stop-color="#2a1a0f"/></radialGradient>
     <linearGradient id="gBigorna" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57504b"/><stop offset=".12" stop-color="#36302d"/><stop offset=".55" stop-color="#1c1816"/><stop offset="1" stop-color="#0c0a09"/></linearGradient>
     <linearGradient id="gBigornaLado" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".3" stop-color="#000" stop-opacity="0"/><stop offset=".7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></linearGradient>
     <linearGradient id="gTopo" x1="0" x2="1"><stop offset="0" stop-color="#6d655f"/><stop offset=".45" stop-color="#b0a59d"/><stop offset=".6" stop-color="#d8cdc4"/><stop offset="1" stop-color="#6d655f"/></linearGradient>
@@ -1324,16 +1339,16 @@ function cenaForja(f){
   </defs>
 
   <g filter="url(#fB1)" opacity=".95" mask="url(#mParede)">
-    <path d="M-40 202L-40 44L210 44L210 202Z" fill="#17110d"/>
+    <path d="M-40 202L-40 44L210 44L210 202Z" fill="#0b0806"/>
     ${pedras}
-    <ellipse cx="98" cy="150" rx="110" ry="90" fill="url(#gLuzForja)"/>
+    <ellipse class="luzFogo" cx="98" cy="150" rx="110" ry="90" fill="url(#gLuzForja)"/>
     <g clip-path="url(#cpBoca)"><rect x="30" y="80" width="140" height="130" fill="url(#gFogo)"/>${chamas}${brasas}</g>
     <path d="M40 202L40 128Q40 84 98 84Q156 84 156 128L156 202" fill="none" stroke="#ff9a3c" stroke-width="3" opacity=".55" filter="url(#fB3)"/>
     <path d="M40 202L40 128Q40 84 98 84Q156 84 156 128L156 202" fill="none" stroke="#0d0907" stroke-width="4"/>
   </g>
 
   <rect x="-60" y="232" width="520" height="110" fill="url(#gChao)"/>
-  <ellipse cx="212" cy="272" rx="190" ry="26" fill="url(#gLuzChao)"/>
+  <ellipse class="luzFogo" cx="212" cy="272" rx="190" ry="26" fill="url(#gLuzChao)"/>
 
   <path d="M120 270L120 340L304 340L304 270Z" fill="url(#gToco)"/>
   <path d="M138 280Q134 305 140 335M168 276Q172 300 166 335M196 282Q192 310 198 335M234 280Q238 305 232 335M262 278Q258 304 264 335M288 282Q292 306 286 335" stroke="#140b06" stroke-width="2.2" fill="none" opacity=".7"/>
@@ -1344,7 +1359,7 @@ function cenaForja(f){
   <path d="${BIGORNA}" fill="url(#gBigorna)"/>
   <g clip-path="url(#cpBigorna)">
     <rect x="50" y="190" width="290" height="90" fill="url(#gBigornaLado)"/>
-    <rect x="50" y="190" width="290" height="90" fill="url(#gAquecido)"/>
+    <rect class="luzFogo" x="50" y="190" width="290" height="90" fill="url(#gAquecido)"/>
     <ellipse cx="${cx}" cy="204" rx="${meia + 30}" ry="16" fill="url(#gReflexo)" opacity=".55" filter="url(#fB6)"/>
   </g>
   <path d="${BIGORNA}" fill="#000" filter="url(#fGrao)" opacity=".14"/>
@@ -1389,11 +1404,35 @@ function animarCena(){
   anima($('#cBrilho'), [{opacity: .35}, {opacity: .55}], {duration: 1800});
   anima($('#cMarteloIdle'), [{transform: 'rotate(0deg)'}, {transform: 'rotate(-2.5deg)'}], {duration: 1400});
 }
-let golpes = 0, capaAberta = false, escondidoEm = 0, actx = null;
+let golpes = 0, capaAberta = false, escondidoEm = 0, actx = null, capaF = 0, capaGeo = null;
+const capaT = {fa: 0, fu: 0, cr: 0, prox: 1.5};
+function geoCapa(){
+  const svgEl = $('#cCena'); if (!svgEl) return (capaGeo = null);
+  const m = svgEl.getScreenCTM(), p = (x, y) => { const q = svgEl.createSVGPoint(); q.x = x; q.y = y; return q.matrixTransform(m); };
+  const f1 = p(52, 188), f2 = p(146, 188), ft = p(98, 96), m1 = p(lerp(160, 112, capaF), 184), m2 = p(lerp(252, 312, capaF), 184);
+  capaGeo = {fx1: f1.x, fx2: f2.x, fy: f1.y, ftop: ft.y, mx1: m1.x, mx2: m2.x, my: m1.y};
+}
+function emissorCapa(dt, nova){
+  const g = capaGeo; if (!g || !capaAberta) return;
+  const R = Math.random, fx = () => g.fx1 + R() * (g.fx2 - g.fx1);
+  capaT.fa += dt; capaT.fu += dt; capaT.cr += dt;
+  while (capaT.fa > .045){ capaT.fa -= .045;
+    if (R() < .7) nova(fx(), g.fy, (R() - .5) * 40, -(70 + R() * 180), 1.1 + R() * 1.6, .5 + R() * .9, -25, {a: 1});
+    else nova(fx(), g.fy, (R() - .5) * 18, -(25 + R() * 55), 2.5 + R() * 3, .8 + R() * 1.4, -4);
+  }
+  if (capaT.fu > .3){ capaT.fu = 0; nova(fx(), g.ftop + 10, (R() - .5) * 12, -(14 + R() * 18), 6 + R() * 4, 16 + R() * 16, -1, {fumo: 1}); if (R() < .4) nova(R() * innerWidth, innerHeight + 30, (R() - .5) * 8, -(10 + R() * 18), 10 + R() * 6, 10 + R() * 22, -.5, {bk: 1}); }
+  if (capaT.cr > capaT.prox){ capaT.cr = 0; capaT.prox = .9 + R() * 2.2;
+    const px = fx(), n = 8 + (R() * 10 | 0);
+    for (let i = 0; i < n; i++){ const a = -Math.PI / 2 + (R() - .5) * 1.4, v = 200 + R() * 360; nova(px, g.fy, Math.cos(a) * v, Math.sin(a) * v, .8 + R() * .9, .7 + R() * 1.1, 300, {r: 1}); }
+  }
+  if (R() < dt * 1.4) nova(g.mx1 + R() * (g.mx2 - g.mx1), g.my, (R() - .5) * 40, -(40 + R() * 80), .7 + R() * .7, .45 + R() * .5, -10, {a: 1});
+}
+addEventListener('resize', () => { if (capaAberta) setTimeout(geoCapa, 50); });
 function mostrarCapa(forcar){
   if (!cfg.pronto || (!forcar && (cfg.capa === false || ativo))) return;
   golpes = 0; capaAberta = true;
   const c = $('#capa'); c.classList.remove('sair'); c.hidden = false; renderCapa();
+  requestAnimationFrame(() => { geoCapa(); Faiscas.emissor(emissorCapa); });
   $('#faiscas').style.zIndex = 46;
 }
 function renderCapa(){
@@ -1401,20 +1440,22 @@ function renderCapa(){
   const feitos = semana().filter(d => d.acesa).length, f = Math.min(1, feitos / Math.max(1, cfg.dias)), pronta = f >= 1;
   const ult = ordenados()[0], dUlt = ult ? diasDesde(ult.inicio) : null, mes = treinos.filter(t => chaveMes(t.inicio) === chaveMes(Date.now())).length;
   const sug = sugestao();
+  capaF = f;
   $('#capa').innerHTML = `
-    <div><div class="cinzel quente" style="font-size:15px;letter-spacing:.3em">FORJA</div>
-      <h1 style="font-size:22px;margin-top:14px;color:var(--texto);letter-spacing:.04em">${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h1>
-      ${sug ? `<p class="suave peq" style="margin:6px 0 0">Hoje: <b style="color:var(--ouro)">${TIPOS[sug.tipo].nome}</b>, ${esc(sug.motivo)}</p>` : ''}</div>
+    <div id="cLuz"></div>
+    <div class="capa-topo"><div class="capa-marca quente">FORJA</div>
+      <h1 class="capa-ola">${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h1>
+      ${sug ? `<p class="capa-sug">Hoje o ferro pede <b>${TIPOS[sug.tipo].nome}</b><br>${esc(sug.motivo)}</p>` : ''}</div>
     <div class="cena">
       ${cenaForja(f)}
-      <h2 style="margin-top:4px">${pronta ? 'Lâmina forjada esta semana' : 'A peça da semana'}</h2>
+      <h2 class="capa-peca">${pronta ? 'Lâmina forjada esta semana' : 'A peça da semana'}</h2>
       <p class="suave peq" style="margin:4px 0 0">${feitos} de ${cfg.dias} treinos${pronta ? '. Bom trabalho, ferreiro.' : '. Cada treino molda o ferro até virar lâmina.'}</p>
     </div>
     <div style="width:min(420px,100%)">
       <div class="infos"><div>Esta semana<b>${feitos}/${cfg.dias}</b></div><div>Este mês<b>${mes} ${mes === 1 ? 'treino' : 'treinos'}</b></div>
         <div>Último treino<b>${dUlt === null ? '—' : dUlt === 0 ? 'hoje' : dUlt === 1 ? 'ontem' : 'há ' + dUlt + ' dias'}</b></div></div>
       <div class="golpes" id="cGolpes"><i></i><i></i><i></i></div>
-      <p class="suave peq" id="cDica" style="margin:0">Dá três marteladas para entrar</p>
+      <p class="capa-dica" id="cDica">Dá três marteladas para entrar</p>
     </div>`;
   animarCena();
 }
@@ -1439,13 +1480,19 @@ function impacto(n){
   $('#capa').animate([{transform: 'translate(0,0)'}, {transform: 'translate(-5px,4px)'}, {transform: 'translate(4px,-3px)'}, {transform: 'translate(-2px,1px)'}, {transform: 'translate(0,0)'}], {duration: 200});
   $('#cClarao').animate([{opacity: 1, transform: 'scale(.3)'}, {opacity: 0, transform: `scale(${n === 3 ? 2.6 : 1.7})`}], {duration: n === 3 ? 420 : 260, easing: 'ease-out'});
   $('#cOnda').animate([{opacity: .9, transform: 'scale(.15,.4)'}, {opacity: 0, transform: `scale(${n === 3 ? 2.2 : 1.5},1.1)`}], {duration: 380, easing: 'ease-out'});
-  ['#cPeca', '#cPecaBrilho'].forEach(s => $(s).animate([{filter: 'brightness(1.9)'}, {filter: 'brightness(1)'}], {duration: n === 3 ? 900 : 450, easing: 'ease-out'}));
+  const calor = 1 + .14 * n;
+  ['#cPeca', '#cPecaBrilho'].forEach(s => { const el = $(s); el.animate([{filter: 'brightness(2.2)'}, {filter: `brightness(${calor})`}], {duration: n === 3 ? 900 : 450, easing: 'ease-out'}); el.style.filter = `brightness(${calor})`; });
+  const nf = Math.min(1, capaF + .07 * n), nd = formaPeca(nf);
+  document.querySelectorAll('#capa path').forEach(el => { if (el.getAttribute('d') === formaPeca(Math.min(1, capaF + .07 * (n - 1)))) el.setAttribute('d', nd); });
+  const luz = $('#cLuz'), r = $('#capa').getBoundingClientRect();
+  luz.style.background = `radial-gradient(circle at ${(p.x - r.left) / r.width * 100}% ${(p.y - r.top) / r.height * 100}%, rgba(255,226,170,.85), rgba(255,140,50,.35) 18%, transparent 48%)`;
+  luz.animate([{opacity: n === 3 ? 1 : .75}, {opacity: 0}], {duration: n === 3 ? 520 : 300, easing: 'ease-out'});
   document.querySelectorAll('#cGolpes i').forEach((d, i) => d.classList.toggle('on', i < n));
   $('#cDica').textContent = n === 1 ? 'Mais duas…' : n === 2 ? 'Mais uma!' : 'O ferro está pronto.';
   if (n >= 3) setTimeout(fecharCapa, 750);
 }
 function fecharCapa(){
-  capaAberta = false; const c = $('#capa'); c.classList.add('sair');
+  capaAberta = false; Faiscas.emissor(null); const c = $('#capa'); c.classList.add('sair');
   setTimeout(() => { c.hidden = true; c.innerHTML = ''; $('#faiscas').style.zIndex = ''; forjarPlacas(); }, 520);
 }
 // Som de martelo em metal, sintetizado (sem ficheiros de áudio).
