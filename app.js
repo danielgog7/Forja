@@ -85,7 +85,7 @@ const TIPOS = {
   longevidade: {nome: 'Saúde e longevidade', sub: 'força funcional, equilíbrio, pega, postura e mobilidade', plano: ['quads', 'post', 'gluteos', 'peito', 'costas', 'lombar', 'abs', 'antebracos', 'ombros']},
   mobilidade: {nome: 'Mobilidade e alongamentos', sub: 'articulações soltas e alongamentos para o corpo todo', plano: []},
   musculos: {nome: 'Escolher músculos'},
-  livre: {nome: 'Montar eu', sub: 'escolhes da lista os exercícios que queres', plano: []},
+  livre: {nome: 'Montar o meu treino', sub: 'escolhes da lista os exercícios que queres', plano: []},
   ia: {nome: 'Treino do ferreiro', sub: 'montado pela IA', plano: ['quads', 'peito', 'dorsais', 'post', 'ombros', 'costas', 'abs', 'biceps', 'triceps', 'gemeos'], oculto: true}
 };
 // Aquecimento: [id, alvo]. Alongamentos por músculo. Longevidade: [grupo, prioridade, opções [id, alvo], séries, descanso].
@@ -360,7 +360,6 @@ function renderInicio(){
   $('#vInicio').innerHTML = `
     <div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
     ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
-    ${ativo ? '' : `<div class="botoes"><button class="btn" data-acao="montar">${IC.mais} Montar o meu treino</button><button class="btn" data-acao="tipoDireto" data-v="mobilidade">Alongamentos</button></div>`}
     ${!ativo && (cfg.modelos || []).length ? `<div class="placa rebites"><h2>Os teus treinos</h2><div class="lista">${cfg.modelos.map(m => `<div class="item" data-acao="usarModelo" data-id="${m.id}" style="padding:12px"><div class="t"><b>${esc(m.nome)}</b><span>${m.itens.length} exercícios · ${m.itens.slice(0, 3).map(x => EXI[x.id] ? EXI[x.id].n : '').filter(Boolean).join(', ')}${m.itens.length > 3 ? '…' : ''}</span></div><span style="color:var(--chama)">${IC.seta}</span></div>`).join('')}</div></div>` : ''}
     ${ativo ? '' : `<div class="placa rebites"><h2>Pede ao ferreiro</h2>${cfg.chave ? `<div class="linha"><input type="text" id="pedidoFerreiro" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
         <button class="btn icone" data-acao="falar" data-alvo="pedidoFerreiro" data-depois="pedirFerreiro" aria-label="Falar">${IC.mic}</button><button class="btn icone quente" data-acao="pedirFerreiro" aria-label="Pedir">${IC.seta}</button></div>
