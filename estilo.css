@@ -255,4 +255,17 @@ textarea { resize: vertical; min-height: 58px; }
 .grafico-peso { width: 100%; height: auto; display: block; margin: 12px 0 10px; font-family: system-ui, sans-serif; }
 .barra-meta { height: 12px; border-radius: 6px; background: #1a1310; border: 1px solid #3a2c24; overflow: hidden; }
 .barra-meta i { display: block; height: 100%; background: linear-gradient(90deg, #8a1f08, #ff8a2a, #ffd27a); box-shadow: 0 0 10px rgba(255,140,40,.6); }
+/* Mapa muscular em ferro */
+.corpo { width: 100%; height: auto; display: block; margin: 4px 0 2px; -webkit-tap-highlight-color: transparent; }
+.corpo .musc { cursor: pointer; }
+.corpo .musc.sel path:first-child { stroke: #ffc861; stroke-width: 2.2; }
+.corpo .aquece { animation: aquecer 1.6s ease-out both; }
+@keyframes aquecer { from { opacity: 0; } to { opacity: 1; } }
+.corpo .brasa-musc { animation: tremula 2.2s ease-in-out infinite alternate; }
+@keyframes tremula { 0% { opacity: .35; } 50% { opacity: .7; } 100% { opacity: .5; } }
+.corpo-titulo { font-family: 'Cinzel', Georgia, serif; font-size: 11px; font-weight: 700; letter-spacing: .25em; fill: #76675b; }
+.legenda-calor { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--apagado); margin-top: 4px; }
+.legenda-calor i { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #3a3330, #6a3a2a, #b8461a, #f2701f, #ffbe55, #fff8e6); box-shadow: 0 0 8px rgba(255,120,30,.25); }
+.calor-info { margin-top: 10px; min-height: 34px; }
+@media (prefers-reduced-motion: reduce) { .corpo .aquece, .corpo .brasa-musc { animation: none; } }
 @media (prefers-reduced-motion: reduce) { #lareira, .brasas i.acesa, #descanso.pronto, .placa.brasa::after, .opcao.on::after, .placa.acende::before { animation: none; } }

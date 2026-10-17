@@ -164,6 +164,18 @@ function historicoEx(id){
   for (const t of ordenados()){ const it = t.itens.find(x => x.id === id); if (it && it.series.length) r.push({data: t.inicio, series: it.series}); }
   return r;
 }
+// Calor de 0 (frio) a 5 (treinado hoje). Os músculos secundários aquecem dois níveis abaixo.
+function calorMusculos(){
+  const prim = {}, sec = {};
+  for (const t of treinos) for (const it of t.itens){
+    const ex = EXI[it.id]; if (!ex || it.fase || !it.series.length) continue;
+    for (const m of ex.p) prim[m] = Math.max(prim[m] || 0, t.inicio);
+    for (const m of ex.s) sec[m] = Math.max(sec[m] || 0, t.inicio);
+  }
+  const nivel = ts => { if (!ts) return 0; const d = diasDesde(ts); return d <= 0 ? 5 : d === 1 ? 4 : d === 2 ? 3 : d <= 4 ? 2 : d <= 7 ? 1 : 0; };
+  const niveis = {}; for (const m of Object.keys(MUSC)) niveis[m] = Math.max(nivel(prim[m]), Math.max(0, nivel(sec[m]) - 2));
+  return {niveis, prim};
+}
 function ultimoPorMusculo(){
   const m = {};
   for (const t of treinos) for (const it of t.itens){
@@ -349,14 +361,7 @@ function renderInicio(){
   const h = new Date().getHours(), ola = h < 6 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 20 ? 'Boa tarde' : 'Boa noite';
   const sem = semana(), feitos = sem.filter(d => d.acesa).length, sug = !ativo && sugestao(), um = ultimoPorMusculo();
   const ultimo = ordenados()[0];
-  const calor = CALOR.map(([nome, ms]) => {
-    const ts = Math.max(0, ...ms.map(m => um[m] || 0)), d = ts ? diasDesde(ts) : null;
-    const [bg, bd, cor, txt] = d === null ? ['#171310', '#2a2420', 'var(--apagado)', 'frio']
-      : d <= 1 ? ['linear-gradient(180deg,#7a2a0c,#3d1507)', '#b8571d', 'var(--incandescente)', d ? 'ontem' : 'hoje']
-      : d <= 3 ? ['linear-gradient(180deg,#4a1f0d,#2a140a)', '#7a3a18', 'var(--ouro)', `há ${d} dias`]
-      : d <= 6 ? ['#251812', '#4a2c1c', 'var(--chama)', `há ${d} dias`] : ['#171310', '#2a2420', 'var(--suave)', `há ${d} dias`];
-    return `<div style="background:${bg};border-color:${bd};color:${cor}">${nome}<b>${txt}</b></div>`;
-  }).join('');
+  const cm = calorMusculos();
   $('#vInicio').innerHTML = `
     <div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
     ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
@@ -369,7 +374,10 @@ function renderInicio(){
       <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div></div>
     ${sug ? `<div class="placa brasa"><h2>Sugestão de hoje</h2><p style="margin:0 0 12px"><b>${TIPOS[sug.tipo].nome}</b>: ${esc(sug.motivo)}</p>
       <button class="btn quente" data-acao="usarSugestao" data-v="${sug.tipo}">Gerar este treino</button></div>` : ''}
-    <div class="placa rebites"><h2>Calor muscular</h2><p class="suave mini" style="margin:-4px 0 10px">Quanto mais quente, mais recente o treino. O que está frio pede ferro.</p><div class="calor">${calor}</div></div>
+    <div class="placa rebites"><h2>Calor muscular</h2><p class="suave mini" style="margin:-4px 0 6px">Cada treino aquece os músculos que trabalhaste; arrefecem com os dias. O que está frio pede ferro. Toca num músculo.</p>
+      ${corpoSVG(cm.niveis)}
+      <div class="legenda-calor"><span>frio</span><i></i><span>em brasa</span></div>
+      <div id="calorInfo" class="calor-info suave peq">${(() => { const frios = MUSC_ESCOLHA.filter(m => !cm.niveis[m]).map(m => MUSC[m]); return frios.length ? `Mais frios: ${frios.slice(0, 4).join(', ')}.` : 'Corpo todo quente. Bom trabalho, ferreiro.'; })()}</div></div>
     ${ultimo ? `<div class="placa rebites" data-acao="verTreino" data-id="${ultimo.id}" style="cursor:pointer"><h2>Último treino</h2>
       <div class="linha entre"><div><b>${esc(ultimo.nome)}</b><div class="suave peq">${dataCurta(ultimo.inicio)} · ${fmtDur(ultimo.fim - ultimo.inicio)} · ${ultimo.itens.length} exercícios</div></div>
       <div class="quente cinzel" style="font-size:18px">${num(volumeDe(ultimo))} kg</div></div></div>` : ''}`;
@@ -1550,6 +1558,14 @@ const ACOES = {
   },
   desligarGH(){ if (!confirm('Desligar a sincronização? Os dados ficam neste dispositivo.')) return; gh.token = ''; LS.set('gh', gh); sync.shas = {}; sync.sujos = {}; guardarSync(); renderPerfil(); },
   exportar, importar,
+  musculo(a){
+    const m = a.dataset.v, cm = calorMusculos(), ts = cm.prim[m], d = ts ? diasDesde(ts) : null;
+    document.querySelectorAll('.corpo .musc').forEach(g => g.classList.toggle('sel', g.dataset.v === m));
+    const quando = d === null ? 'ainda não treinado como músculo principal' : d === 0 ? 'treinado hoje' : d === 1 ? 'treinado ontem' : `treinado há ${d} dias`;
+    $('#calorInfo').innerHTML = `<div class="linha entre"><span><b style="color:var(--texto)">${MUSC[m]}</b>: ${quando}.</span>${MUSC_ESCOLHA.includes(m) && !ativo ? `<button class="btn peq-btn" data-acao="treinarMusculo" data-v="${m}">Treinar</button>` : ''}</div>`;
+    const r = a.getBoundingClientRect(); Faiscas.explosao(r.left + r.width / 2, r.top + r.height / 2, cm.niveis[m] >= 3 ? 10 : 4, true, null, .35);
+  },
+  treinarMusculo(a){ novoRapido('musculos'); rapido.musculos = [a.dataset.v]; folhaRapido(); },
   montar(){ novoRapido('livre'); folhaSeletor('multi'); },
   tipoDireto(a){ novoRapido(a.dataset.v); gerar(); },
   rAquec(){ rapido.aquec = !rapido.aquec; folhaRapido(); }, rAlong(){ rapido.along = !rapido.along; folhaRapido(); },
