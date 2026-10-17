@@ -1,5 +1,5 @@
 // Forja — service worker: a app funciona sem internet e atualiza-se sozinha quando há ligação.
-const CACHE = 'forja-v20';
+const CACHE = 'forja-v21';
 const IMAGENS = 'forja-img';
 const FICHEIROS = ['./', './index.html', './estilo.css', './app.js', './corpo.js', './exercicios.json', './cinzel.woff2', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './pictogramas/marcha_linha.svg', './pictogramas/anjos_parede.svg'];
