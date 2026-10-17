@@ -86,19 +86,19 @@ for x in FONTE:
 
 # Exercícios próprios da Forja para saúde e longevidade, com instruções em PT-PT e pictogramas
 PROPRIOS = [
- dict(id='forja_equilibrio', n='Equilíbrio numa perna', en='single leg balance exercise', req=['corpo'], p=['gluteos'], s=['abs', 'gemeos'], l=1, m=0, f='stat', i=['local/equilibrio.svg'],
+ dict(id='forja_equilibrio', n='Equilíbrio numa perna', en='single leg balance exercise', req=['corpo'], p=['gluteos'], s=['abs', 'gemeos'], l=1, m=0, f='stat', i=["Standing_Hip_Circles/0.jpg", "Standing_Hip_Circles/1.jpg"],
       ins=['Fica em pé, de frente para uma parede ou cadeira, para te apoiares se precisares.', 'Passa o peso para uma perna e levanta o outro pé do chão, com o joelho à altura da anca.', 'Mantém o tronco direito e o olhar fixo num ponto à frente.', 'Aguenta o tempo indicado e troca de perna.'],
       dc=['Para tornar mais difícil, fecha os olhos ou fica em cima de uma almofada.', 'O joelho da perna de apoio fica ligeiramente fletido, nunca bloqueado.']),
  dict(id='forja_marcha_linha', n='Marcha em linha (calcanhar e ponta)', en='heel to toe walk balance', req=['corpo'], p=['abs'], s=['gemeos', 'gluteos'], l=1, m=0, f='stat', i=['local/marcha_linha.svg'],
       ins=['Imagina uma linha reta no chão, ou usa uma junta do soalho.', 'Caminha devagar, encostando o calcanhar de um pé à ponta do outro.', 'Braços abertos para o lado e olhar em frente, não nos pés.', 'Dá 15 a 20 passos, vira-te e volta.'],
       dc=['Se perderes o equilíbrio, para, recompõe-te e continua.', 'Faz perto de uma parede nas primeiras vezes.']),
- dict(id='forja_bird_dog', n='Bird dog (braço e perna opostos)', en='bird dog exercise', req=['corpo'], p=['lombar'], s=['abs', 'gluteos'], l=1, m=0, f='stat', i=['local/bird_dog.svg'],
+ dict(id='forja_bird_dog', n='Bird dog (braço e perna opostos)', en='bird dog exercise', req=['corpo'], p=['lombar'], s=['abs', 'gluteos'], l=1, m=0, f='stat', i=["Glute_Kickback/0.jpg", "Glute_Kickback/1.jpg"],
       ins=['Coloca-te a quatro apoios: mãos por baixo dos ombros e joelhos por baixo das ancas.', 'Contrai ligeiramente o abdómen, com as costas planas como uma mesa.', 'Estende ao mesmo tempo o braço direito para a frente e a perna esquerda para trás.', 'Aguenta 2 segundos, volta devagar e troca de lado.'],
       dc=['A anca não roda: imagina um copo de água em cima da lombar.', 'Mais vale amplitude curta e controlada do que braço e perna altos com a lombar a arquear.']),
- dict(id='forja_suspensao', n='Suspensão na barra', en='dead hang exercise', req=['elevacoes'], p=['antebracos'], s=['dorsais', 'ombros'], l=1, m=0, f='stat', i=['local/suspensao.svg'],
+ dict(id='forja_suspensao', n='Suspensão na barra', en='dead hang exercise', req=['elevacoes'], p=['antebracos'], s=['dorsais', 'ombros'], l=1, m=0, f='stat', i=["Hanging_Leg_Raise/0.jpg"],
       ins=['Agarra a barra com as duas mãos, à largura dos ombros.', 'Deixa o corpo pendurado, com os pés fora do chão e os braços esticados.', 'Mantém os ombros ativos, sem os deixar subir até às orelhas.', 'Aguenta o tempo indicado e desce com cuidado.'],
       dc=['Excelente para a força de pega e para descomprimir a coluna.', 'Se ainda não aguentas o peso todo, deixa a ponta dos pés num banco.']),
- dict(id='forja_sentar_levantar', n='Sentar e levantar da cadeira', en='sit to stand exercise', req=['corpo'], p=['quads'], s=['gluteos', 'post'], l=1, m=1, f='push', i=['local/sentar_levantar.svg'],
+ dict(id='forja_sentar_levantar', n='Sentar e levantar da cadeira', en='sit to stand exercise', req=['corpo'], p=['quads'], s=['gluteos', 'post'], l=1, m=1, f='push', i=["Bodyweight_Squat/0.jpg", "Bodyweight_Squat/1.jpg"],
       ins=['Senta-te na ponta de uma cadeira firme, com os pés à largura das ancas.', 'Inclina o tronco ligeiramente à frente e levanta-te sem usar as mãos.', 'Fica completamente em pé, com os glúteos contraídos.', 'Senta-te devagar, em 3 segundos, e repete.'],
       dc=['É um dos melhores indicadores de autonomia com a idade.', 'Para dificultar, segura um halter ao peito ou usa uma cadeira mais baixa.']),
  dict(id='forja_anjos_parede', n='Anjos na parede', en='wall angels exercise', req=['corpo'], p=['costas'], s=['ombros', 'trapezio'], l=1, m=0, f='pull', i=['local/anjos_parede.svg'],

@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120" width="640" height="480">
-<defs><linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c221c"/><stop offset="1" stop-color="#140f0c"/></linearGradient>
-<radialGradient id="l" cx="50%" cy="100%" r="70%"><stop offset="0" stop-color="#ff7a1c" stop-opacity=".35"/><stop offset="1" stop-color="#ff7a1c" stop-opacity="0"/></radialGradient>
-<linearGradient id="c" x1="0" x2="1"><stop offset="0" stop-color="#ff6a1a" stop-opacity="0"/><stop offset=".5" stop-color="#ffb347"/><stop offset="1" stop-color="#ff6a1a" stop-opacity="0"/></linearGradient></defs>
-<rect width="160" height="120" fill="url(#f)"/><rect width="160" height="120" fill="url(#l)"/><path d="M98 70H130M128 70V38M100 70V104M127 70V104" fill="none" stroke="#7a6658" stroke-width="5" stroke-linecap="round"/><path d="M142 62V30M136 37L142 30L148 37" fill="none" stroke="#ff9a3c" stroke-width="2.5" stroke-dasharray="3 5" stroke-linecap="round" opacity=".9"/>
-<line x1="10" y1="106" x2="150" y2="106" stroke="url(#c)" stroke-width="2"/>
-<g fill="none" stroke="#efe3d3" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"><path d="M101 66L80 40M80 44L58 52M101 66L79 75L80 103"/><circle cx="72" cy="30" r="8.5" fill="#efe3d3" stroke="none"/></g></svg>
