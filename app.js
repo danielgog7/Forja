@@ -188,43 +188,68 @@ const diasDesde = ts => ts ? Math.floor((inicioDia(Date.now()) - inicioDia(ts)) 
 function inicioDia(ts){ const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
 
 /* ---------- Faíscas ---------- */
+// Três camadas: faíscas rápidas em traço, brasas lentas e bokeh (brasas desfocadas ao longe).
+// De vez em quando a forja crepita e solta uma rajada vinda do fundo do ecrã.
 const Faiscas = (() => {
   const c = $('#faiscas'), x = c.getContext('2d'), reduz = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let W = 0, H = 0, ps = [], ult = 0, corre = false, acum = 0;
+  let W = 0, H = 0, ps = [], ult = 0, corre = false, acum = 0, acumB = 0, acumC = 0, proxC = 2;
+  const brilho = document.createElement('canvas'); brilho.width = brilho.height = 64;
+  { const g = brilho.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    r.addColorStop(0, 'rgba(255,214,150,1)'); r.addColorStop(.25, 'rgba(255,140,50,.55)'); r.addColorStop(.6, 'rgba(255,90,20,.15)'); r.addColorStop(1, 'rgba(255,60,10,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 64, 64); }
   function tam(){ const d = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * d; c.height = H * d; x.setTransform(d, 0, 0, d, 0, 0); }
   const nova = (px, py, vx, vy, vida, t, g, extra) => ps.push(Object.assign({x: px, y: py, vx, vy, v: 0, vida, t, g}, extra));
+  const R = Math.random;
   // riscos: faíscas de forja (traços rápidos que ressaltam na superfície "chao" = {y, x1, x2})
   function explosao(px, py, n = 26, riscos = false, chao = null, forca = 1){
     for (let i = 0; i < n; i++){
       if (riscos){
-        const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * (Math.random() < .7 ? 1.75 : 1.1), s = (160 + Math.random() * 460) * forca;
-        nova(px + (Math.random() - .5) * 12 * forca, py, Math.cos(a) * s, Math.sin(a) * s, (.55 + Math.random() * 1.05) * (forca < 1 ? .7 : 1), (1 + Math.random() * 1.6) * (forca < 1 ? .75 : 1), 820 * Math.max(.5, forca), {r: 1, chao});
+        const a = -Math.PI / 2 + (R() - .5) * Math.PI * (R() < .7 ? 1.75 : 1.1), s = (160 + R() * 460) * forca;
+        nova(px + (R() - .5) * 12 * forca, py, Math.cos(a) * s, Math.sin(a) * s, (.55 + R() * 1.05) * (forca < 1 ? .7 : 1), (1 + R() * 1.6) * (forca < 1 ? .75 : 1), 820 * Math.max(.5, forca), {r: 1, chao});
       } else {
-        const a = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.5, s = 110 + Math.random() * 280;
-        nova(px, py, Math.cos(a) * s, Math.sin(a) * s, .45 + Math.random() * .7, 1 + Math.random() * 1.7, 560);
+        const a = -Math.PI / 2 + (R() - .5) * Math.PI * 1.5, s = 110 + R() * 280;
+        nova(px, py, Math.cos(a) * s, Math.sin(a) * s, .45 + R() * .7, 1 + R() * 1.7, 560);
       }
     }
     iniciar();
   }
+  function crepita(){
+    const px = W * (.1 + R() * .8), n = 6 + (R() * 8 | 0);
+    for (let i = 0; i < n; i++){ const a = -Math.PI / 2 + (R() - .5) * 1.3, s = 220 + R() * 380; nova(px + (R() - .5) * 30, H + 2, Math.cos(a) * s, Math.sin(a) * s, .9 + R() * .9, .8 + R() * 1.2, 260, {r: 1}); }
+  }
+  const sprite = (px, py, raio, alfa) => { if (alfa <= .003) return; x.globalAlpha = Math.min(1, alfa); x.drawImage(brilho, px - raio, py - raio, raio * 2, raio * 2); x.globalAlpha = 1; };
   function passo(t){
     const dt = Math.min(.05, (t - ult) / 1000 || .016); ult = t;
     x.clearRect(0, 0, W, H);
-    if (!reduz){ acum += dt; while (acum > .24){ acum -= .24; if (ps.length < 70) nova(Math.random() * W, H + 4, (Math.random() - .5) * 14, -(22 + Math.random() * 46), 3 + Math.random() * 4.5, .7 + Math.random() * 1.5, -3); } }
+    if (!reduz){
+      acum += dt; acumB += dt; acumC += dt;
+      while (acum > .13){ acum -= .13; if (ps.length < 110){
+        if (R() < .55) nova(R() * W, H + 4, (R() - .5) * 30, -(90 + R() * 160), 1.2 + R() * 1.6, .45 + R() * .75, -12, {a: 1});
+        else nova(R() * W, H + 4, (R() - .5) * 14, -(20 + R() * 50), 3 + R() * 4.5, .7 + R() * 1.5, -3);
+      } }
+      if (acumB > .8){ acumB = 0; if (ps.filter(p => p.b).length < 9) nova(R() * W, H + 40, (R() - .5) * 8, -(10 + R() * 20), 10 + R() * 7, 10 + R() * 22, -.5, {b: 1}); }
+      if (acumC > proxC){ acumC = 0; proxC = 1.6 + R() * 3.2; crepita(); }
+    }
     x.globalCompositeOperation = 'lighter';
     for (let i = ps.length - 1; i >= 0; i--){
       const p = ps[i]; p.v += dt; const f = p.v / p.vida;
-      if (f >= 1 || p.y < -20){ ps.splice(i, 1); continue; }
-      p.vy += p.g * dt; p.vx += Math.sin(p.v * 3 + i) * 8 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (f >= 1 || p.y < -40){ ps.splice(i, 1); continue; }
+      p.vy += p.g * dt; p.vx += Math.sin(p.v * 3 + i) * (p.b ? 2 : 8) * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.b){ sprite(p.x, p.y, p.t, .1 * Math.sin(Math.PI * f)); continue; }
+      if (p.a){
+        const pisca = .6 + .4 * Math.sin(p.v * 26 + i), alfa = (1 - f * f) * pisca;
+        x.strokeStyle = `hsla(${46 - 30 * f},100%,${88 - 35 * f}%,${alfa})`; x.lineWidth = p.t; x.lineCap = 'round';
+        x.beginPath(); x.moveTo(p.x - p.vx * .035, p.y - p.vy * .035); x.lineTo(p.x, p.y); x.stroke();
+        sprite(p.x, p.y, p.t * 6, .35 * alfa); continue;
+      }
       if (p.r){
         p.vx *= 1 - 1.2 * dt;
         const k = p.chao; if (k && p.vy > 0 && p.y > k.y && p.x > k.x1 && p.x < k.x2 && p.y - p.vy * dt <= k.y + 2){ p.y = k.y; p.vy *= -.32; p.vx *= .75; }
         x.strokeStyle = `hsla(${50 - 38 * f},100%,${92 - 40 * f}%,${1 - f * f})`; x.lineWidth = p.t * (1.25 - f * .6); x.lineCap = 'round';
         x.beginPath(); x.moveTo(p.x - p.vx * .04, p.y - p.vy * .04); x.lineTo(p.x, p.y); x.stroke();
-        x.fillStyle = `hsla(30,100%,60%,${.18 * (1 - f)})`; x.beginPath(); x.arc(p.x, p.y, p.t * 3.2, 0, 7); x.fill();
-        continue;
+        sprite(p.x, p.y, p.t * 5, .45 * (1 - f)); continue;
       }
-      x.fillStyle = `hsla(${30 * (1 - f)},100%,${60 - 25 * f}%,${.13 * (1 - f)})`;
-      x.beginPath(); x.arc(p.x, p.y, p.t * 4.2, 0, 7); x.fill();
+      sprite(p.x, p.y, p.t * 5, .5 * (1 - f));
       x.fillStyle = `hsla(${48 - 40 * f},100%,${90 - 45 * f}%,${1 - f * f})`;
       x.beginPath(); x.arc(p.x, p.y, p.t * (1 - f * .5), 0, 7); x.fill();
     }
@@ -238,6 +263,13 @@ const Faiscas = (() => {
   tam(); iniciar();
   return {explosao, de(el, n){ if (!el) return; const r = el.getBoundingClientRect(); explosao(r.left + r.width / 2, r.top + r.height / 2, n); }};
 })();
+// O lingote do início solta faíscas de vez em quando, como metal acabado de sair do fogo.
+setInterval(() => {
+  if (document.hidden || vista !== 'vInicio' || !$('#capa').hidden || !$('#folha').hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const l = document.querySelector('.lingote'); if (!l) return;
+  const r = l.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return;
+  Faiscas.explosao(r.left + r.width * (.15 + Math.random() * .7), r.top + 6, 4 + (Math.random() * 6 | 0), true, null, .42);
+}, 2300);
 
 /* ---------- Gerador de treinos ---------- */
 function prescricao(ex){
@@ -325,7 +357,7 @@ const RENDER = {vInicio: renderInicio, vTreino: renderTreino, vExercicios: rende
 // Ao entrar num ecrã, as cantoneiras das placas visíveis aquecem e soltam faíscas, como acabadas de forjar.
 function forjarPlacas(){
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const ps = Array.from(document.querySelectorAll('section.vista:not([hidden]) .placa')).filter(p => { const r = p.getBoundingClientRect(); return r.height && r.top < innerHeight - 40 && r.bottom > 0; }).slice(0, 4);
+  const ps = Array.from(document.querySelectorAll('section.vista:not([hidden]) .placa, section.vista:not([hidden]) .heroi')).filter(p => { const r = p.getBoundingClientRect(); return r.height && r.top < innerHeight - 40 && r.bottom > 0; }).slice(0, 4);
   ps.forEach((p, i) => setTimeout(() => {
     p.classList.remove('acende'); void p.offsetWidth; p.classList.add('acende');
     setTimeout(() => p.classList.remove('acende'), 1600);
@@ -357,30 +389,55 @@ function semana(){
   const dias = new Set(treinos.map(t => inicioDia(t.inicio)));
   return ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((l, i) => { const d = seg.getTime() + i * DIA; return {l, acesa: dias.has(inicioDia(d + 3600e3)), hoje: d === inicioDia(Date.now())}; });
 }
+function inicioSemana(ts){ const d = new Date(ts); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); }
+// Semanas seguidas a cumprir a meta de treinos (a semana atual só conta quando já está cumprida).
+function sequenciaSemanas(){
+  const dias = {};
+  for (const t of treinos){ const k = inicioSemana(t.inicio); (dias[k] = dias[k] || new Set()).add(inicioDia(t.inicio)); }
+  const ok = k => dias[k] && dias[k].size >= cfg.dias;
+  let k = inicioSemana(Date.now()), n = 0;
+  if (!ok(k)) k = inicioSemana(k - 3 * DIA);
+  while (ok(k)){ n++; k = inicioSemana(k - 3 * DIA); }
+  return n;
+}
+const BIGORNA_MARCA = `<svg class="heroi-bigorna" viewBox="40 180 300 100" aria-hidden="true"><defs><linearGradient id="hbF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a201a"/><stop offset="1" stop-color="#0d0907" stop-opacity="0"/></linearGradient></defs>
+  <path d="M58 208Q90 199 126 202L140 202L140 196L322 196Q330 196 330 202L330 206Q326 214 300 218Q268 222 262 236Q256 252 268 260L300 264Q308 266 308 272L116 272Q116 266 124 264L156 260Q168 252 162 236Q156 222 128 218Q96 214 58 208Z" fill="url(#hbF)"/>
+  <path d="M58 208Q90 199 126 202L140 202L140 196L322 196Q330 196 330 202" fill="none" stroke="#ff9a4a" stroke-width="1.4" opacity=".35"/></svg>`;
 function renderInicio(){
   const h = new Date().getHours(), ola = h < 6 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 20 ? 'Boa tarde' : 'Boa noite';
-  const sem = semana(), feitos = sem.filter(d => d.acesa).length, sug = !ativo && sugestao(), um = ultimoPorMusculo();
-  const ultimo = ordenados()[0];
-  const cm = calorMusculos();
+  const sem = semana(), feitos = sem.filter(d => d.acesa).length, sug = !ativo && sugestao(), ultimo = ordenados()[0], cm = calorMusculos();
+  const seq = sequenciaSemanas(), mes = treinos.filter(t => chaveMes(t.inicio) === chaveMes(Date.now())).length;
+  const vol7 = treinos.filter(t => t.inicio >= Date.now() - 7 * DIA).reduce((a, t) => a + volumeDe(t), 0);
+  const frios = MUSC_ESCOLHA.filter(m => !cm.niveis[m]).map(m => MUSC[m]);
   $('#vInicio').innerHTML = `
-    <div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
-    ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
+    <div class="heroi">
+      ${BIGORNA_MARCA}
+      <div class="heroi-saud">${ola}</div>
+      <h1 class="heroi-nome">${cfg.nome ? esc(cfg.nome) : 'Ferreiro'}</h1>
+      <p class="heroi-frase">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p>
+      <div class="lingote-brilho"><button class="lingote" data-acao="${ativo ? 'irTreino' : 'acender'}"><span>${ativo ? 'Voltar ao treino' : 'Acender a forja'}</span></button></div>
+      ${sug ? `<div class="heroi-sug"><div class="cresce"><span class="rotulo">Hoje, o ferro pede</span><b>${TIPOS[sug.tipo].nome}</b><span class="motivo">${esc(sug.motivo)}</span></div>
+        <button class="btn peq-btn" data-acao="usarSugestao" data-v="${sug.tipo}">Forjar</button></div>` : ''}
+      <div class="heroi-semana"><div class="linha entre"><span class="rotulo">Esta semana</span><span class="rotulo"><b>${feitos}</b> de ${cfg.dias}</span></div>
+        <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div></div>
+    </div>
+    <div class="forja-stats">
+      <div><b class="quente">${seq}</b><span>${seq === 1 ? 'semana seguida' : 'semanas seguidas'}</span></div>
+      <div><b class="quente">${mes}</b><span>${mes === 1 ? 'treino este mês' : 'treinos este mês'}</span></div>
+      <div><b class="quente">${vol7 >= 1000 ? num((vol7 / 1000).toFixed(1)) + ' t' : num(vol7) + ' kg'}</b><span>levantados em 7 dias</span></div>
+    </div>
     ${!ativo && (cfg.modelos || []).length ? `<div class="placa rebites"><h2>Os teus treinos</h2><div class="lista">${cfg.modelos.map(m => `<div class="item" data-acao="usarModelo" data-id="${m.id}" style="padding:12px"><div class="t"><b>${esc(m.nome)}</b><span>${m.itens.length} exercícios · ${m.itens.slice(0, 3).map(x => EXI[x.id] ? EXI[x.id].n : '').filter(Boolean).join(', ')}${m.itens.length > 3 ? '…' : ''}</span></div><span style="color:var(--chama)">${IC.seta}</span></div>`).join('')}</div></div>` : ''}
+    <div class="placa rebites"><h2>Calor muscular</h2><p class="suave mini" style="margin:-4px 0 6px">Cada treino aquece os músculos que trabalhaste; arrefecem com os dias. Toca num músculo.</p>
+      ${corpoSVG(cm.niveis)}
+      <div class="legenda-calor"><span>frio</span><i></i><span>em brasa</span></div>
+      <div id="calorInfo" class="calor-info suave peq">${frios.length ? `O que está frio pede ferro: ${frios.slice(0, 4).join(', ')}.` : 'Corpo todo quente. Bom trabalho, ferreiro.'}</div></div>
     ${ativo ? '' : `<div class="placa rebites"><h2>Pede ao ferreiro</h2>${cfg.chave ? `<div class="linha"><input type="text" id="pedidoFerreiro" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
         <button class="btn icone" data-acao="falar" data-alvo="pedidoFerreiro" data-depois="pedirFerreiro" aria-label="Falar">${IC.mic}</button><button class="btn icone quente" data-acao="pedirFerreiro" aria-label="Pedir">${IC.seta}</button></div>
         <div class="chips" style="margin-top:10px">${['Tenho 20 minutos', 'Quero suar', 'Só halteres hoje', 'Dói-me o ombro'].map(t => chip(false, 'sugFerreiro', t, t)).join('')}</div>`
       : `<p class="suave peq" style="margin:0 0 10px">Diz o que te apetece treinar, por escrito ou por voz, e a IA monta o treino. Precisa da tua chave gratuita do Gemini.</p><button class="btn" data-acao="irPerfil">${IC.ia} Ligar a IA no Perfil</button>`}</div>`}
-    <div class="placa rebites"><div class="linha entre"><h2>Esta semana</h2><span class="suave peq">${feitos} de ${cfg.dias} treinos</span></div>
-      <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div></div>
-    ${sug ? `<div class="placa brasa"><h2>Sugestão de hoje</h2><p style="margin:0 0 12px"><b>${TIPOS[sug.tipo].nome}</b>: ${esc(sug.motivo)}</p>
-      <button class="btn quente" data-acao="usarSugestao" data-v="${sug.tipo}">Gerar este treino</button></div>` : ''}
-    <div class="placa rebites"><h2>Calor muscular</h2><p class="suave mini" style="margin:-4px 0 6px">Cada treino aquece os músculos que trabalhaste; arrefecem com os dias. O que está frio pede ferro. Toca num músculo.</p>
-      ${corpoSVG(cm.niveis)}
-      <div class="legenda-calor"><span>frio</span><i></i><span>em brasa</span></div>
-      <div id="calorInfo" class="calor-info suave peq">${(() => { const frios = MUSC_ESCOLHA.filter(m => !cm.niveis[m]).map(m => MUSC[m]); return frios.length ? `Mais frios: ${frios.slice(0, 4).join(', ')}.` : 'Corpo todo quente. Bom trabalho, ferreiro.'; })()}</div></div>
     ${ultimo ? `<div class="placa rebites" data-acao="verTreino" data-id="${ultimo.id}" style="cursor:pointer"><h2>Último treino</h2>
-      <div class="linha entre"><div><b>${esc(ultimo.nome)}</b><div class="suave peq">${dataCurta(ultimo.inicio)} · ${fmtDur(ultimo.fim - ultimo.inicio)} · ${ultimo.itens.length} exercícios</div></div>
-      <div class="quente cinzel" style="font-size:18px">${num(volumeDe(ultimo))} kg</div></div></div>` : ''}`;
+      <div class="linha entre"><div><b>${esc(ultimo.nome)}</b><div class="suave peq">${dataCurta(ultimo.inicio)} · ${fmtDur(ultimo.fim - ultimo.inicio)} · ${ultimo.itens.filter(x => !x.fase).length} exercícios</div></div>
+      <div class="quente cinzel" style="font-size:18px;white-space:nowrap">${num(volumeDe(ultimo))} kg</div></div></div>` : ''}`;
 }
 
 /* ---------- Início rápido e plano ---------- */
@@ -1478,7 +1535,7 @@ document.addEventListener('visibilitychange', () => {
 const alterna = (arr, v) => arr.includes(v) ? arr.filter(x => x !== v) : arr.concat(v);
 const ACOES = {
   fecharFolha, irTreino: () => { fecharFolha(); irPara('vTreino'); },
-  acender(){ if (!rapido) novoRapido(); folhaRapido(); },
+  acender(a){ if (a && a.classList && a.classList.contains('lingote')){ Faiscas.de(a, 30); vibrar(20); } if (!rapido) novoRapido(); folhaRapido(); },
   usarSugestao(a){ novoRapido(a.dataset.v); gerar(); },
   rTipo(a){ rapido.tipo = a.dataset.v; folhaRapido(); }, rDur(a){ rapido.duracao = +a.dataset.v; folhaRapido(); },
   rEq(a){ rapido.equip = alterna(rapido.equip, a.dataset.v); folhaRapido(); }, rMus(a){ rapido.musculos = alterna(rapido.musculos, a.dataset.v); folhaRapido(); },
