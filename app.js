@@ -986,38 +986,11 @@ function blocoDicas(ex, d){
 
 /* ---------- IA (Gemini, chave do utilizador) ---------- */
 // Pedido em curso à IA (para poder cancelar) e se o modelo aceita desligar o "pensamento".
-let iaPedido = null, iaPensarSempre = false;
-function cancelarIA(){ if (iaPedido){ iaPedido.cancelado = true; iaPedido.ctl.abort(); } }
+// A chamada à IA vive em ia-comum.js (comum às apps): troca de modelo quando um esgota, espera nos limites por minuto e Groq de reserva.
+function cancelarIA(){ IA.cancelar(); }
 async function geminiTexto(texto, json = true, espera = 40000){
   if (!cfg.chave) throw new Error('Falta a chave do Gemini no Perfil.');
-  const modelo = String(cfg.modelo || 'gemini-flash-latest').replace(/^models\//, '');
-  const gc = json ? {temperature: .3, responseMimeType: 'application/json'} : {temperature: .6};
-  const pedir = async pensar => {
-    const ped = iaPedido = {ctl: new AbortController(), cancelado: false}, t = setTimeout(() => ped.ctl.abort(), espera);
-    try {
-      return await fetch(`${API}models/${encodeURIComponent(modelo)}:generateContent`, {method: 'POST', signal: ped.ctl.signal,
-        headers: {'Content-Type': 'application/json', 'x-goog-api-key': cfg.chave},
-        body: JSON.stringify({contents: [{role: 'user', parts: [{text: texto}]}], generationConfig: pensar ? gc : Object.assign({thinkingConfig: {thinkingBudget: 0}}, gc)})});
-    } catch(e){
-      if (ped.cancelado) throw new Error('Cancelado.');
-      if (ped.ctl.signal.aborted) throw new Error('O ferreiro demorou demasiado a responder.');
-      throw new Error('Sem ligação à internet.');
-    } finally { clearTimeout(t); if (iaPedido === ped) iaPedido = null; }
-  };
-  let r = await pedir(iaPensarSempre || !/flash/i.test(modelo)), j = await r.json().catch(() => ({}));
-  if (!r.ok && r.status === 400 && /think/i.test((j.error && j.error.message) || '') && !iaPensarSempre){
-    iaPensarSempre = true; r = await pedir(true); j = await r.json().catch(() => ({}));
-  }
-  if (!r.ok){
-    const msg = (j.error && j.error.message) || '';
-    if (r.status === 429) throw new Error('Limite gratuito do Gemini atingido. Tenta mais tarde.');
-    if (r.status === 401 || r.status === 403 || /api key/i.test(msg)) throw new Error('Chave do Gemini inválida. Verifica no Perfil.');
-    if (r.status === 404) throw new Error('Modelo não encontrado. No Perfil, toca em "Testar ligação".');
-    throw new Error('Erro do Gemini: ' + (msg || r.status));
-  }
-  const txt = ((j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || []).filter(p => !p.thought).map(p => p.text || '').join('');
-  if (!txt) throw new Error('A IA não devolveu resposta.');
-  return txt;
+  return IA.pedir({texto, json, espera, chave: cfg.chave, modelo: cfg.modelo});
 }
 function lerJSON(txt){
   const s = String(txt).replace(/```(?:json)?/gi, ''), a = s.indexOf('{'), b = s.lastIndexOf('}');
@@ -1047,13 +1020,7 @@ Responde só com JSON: {"passos":["3 a 6 passos curtos, traduzidos e simplificad
   } finally { pedidosDicas.delete(id); }
 }
 async function listarModelos(){
-  let r;
-  try { r = await fetch(API + 'models?pageSize=1000', {headers: {'x-goog-api-key': cfg.chave}}); } catch(e){ throw new Error('Sem ligação à internet.'); }
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error([400, 401, 403].includes(r.status) ? 'Chave inválida.' : 'Erro: ' + ((j.error && j.error.message) || r.status));
-  const pts = n => (/latest/.test(n) ? 100 : 0) - (/lite/.test(n) ? 10 : 0) - (/preview/.test(n) ? 5 : 0) + (parseFloat((n.match(/\d+(\.\d+)?/) || [])[0]) || 0);
-  const nomes = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, ''))
-    .filter(n => /flash/i.test(n) && !/(image|tts|audio|live|embed|exp)/i.test(n)).sort((a, b) => pts(b) - pts(a));
+  const nomes = await IA.listarModelos(cfg.chave);
   if (nomes.length && !nomes.includes(cfg.modelo)){ cfg.modelo = nomes[0]; guardarCfg(); }
   return nomes;
 }
@@ -1100,6 +1067,7 @@ function renderPerfil(){
       <p class="suave peq" style="margin:0">A Forja usa o Gemini da Google, com uma chave gratuita tua. Fica guardada só neste dispositivo. Para criar: abre <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a>, entra com a conta Google, toca em "Create API key" e cola a chave aqui.</p>
       <label class="campo">Chave do Gemini<div class="linha"><input type="password" id="pChave" value="${esc(cfg.chave)}" placeholder="Cola aqui a chave" autocomplete="off"><button class="btn icone" data-acao="verChave">Ver</button></div></label>
       <div class="linha"><button class="btn quente" data-acao="testarIA">Guardar e testar ligação</button><span class="suave mini cresce" id="iaTeste">${cfg.chave ? 'Modelo: ' + esc(cfg.modelo) : ''}</span></div></div>
+    <div class="placa rebites col"><h2>IA de reserva (Groq)</h2>${IA.htmlGroq({sub: 'suave peq', pri: 'btn quente'})}</div>
     <details class="placa col"><summary><h2 style="display:inline">Sincronização entre dispositivos</h2> <span class="suave peq">(opcional)</span></summary>
       <div class="col" style="margin-top:12px"><p class="suave peq" style="margin:0">Guarda os treinos num repositório privado teu no GitHub, para teres os mesmos dados no telemóvel e no PC. Cria um repositório privado (por exemplo, forja-dados) e um token "fine-grained" com permissão Contents: Read and write só nesse repositório.</p>
       <label class="campo">Dono (utilizador GitHub)<input type="text" id="gDono" value="${esc(gh.dono)}" autocomplete="off"></label>
