@@ -469,23 +469,28 @@ function renderInicio(){
   const sem = semana(), feitos = sem.filter(d => d.acesa).length, sug = !ativo && sugestao(), um = ultimoPorMusculo();
   const ultimo = ordenados()[0];
   const cm = calorMusculos();
+  const fPeca = Math.min(1, feitos / Math.max(1, cfg.dias));
   $('#vInicio').innerHTML = `
-    <div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
-    ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
-    ${!ativo && (cfg.modelos || []).length ? `<div class="placa rebites"><h2>Os teus treinos</h2><div class="lista">${cfg.modelos.map(m => `<div class="item" data-acao="usarModelo" data-id="${m.id}" style="padding:12px"><div class="t"><b>${esc(m.nome)}</b><span>${m.itens.length} exercícios · ${m.itens.slice(0, 3).map(x => EXI[x.id] ? EXI[x.id].n : '').filter(Boolean).join(', ')}${m.itens.length > 3 ? '…' : ''}</span></div><span style="color:var(--chama)">${IC.seta}</span></div>`).join('')}</div></div>` : ''}
-    ${ativo ? '' : `<div class="placa rebites"><h2>Pede ao ferreiro</h2>${temIA() ? `<div class="linha"><input type="text" id="pedidoFerreiro" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
+    <div class="placa brasa heroi">
+      <div class="linha entre" style="align-items:flex-start"><div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave peq" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
+        <div class="heroi-conta"><b>${feitos}</b><span>/${cfg.dias}</span></div></div>
+      <div class="heroi-peca">${pecaSVG(fPeca)}</div>
+      <p class="heroi-legenda">${fPeca >= 1 ? 'Lâmina forjada esta semana' : 'A peça da semana'} · ${feitos} de ${cfg.dias} treinos</p>
+      <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div>
+      ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
+    </div>
+    ${sug ? `<div class="placa sobria sugestao"><div class="cresce"><h2>Sugestão de hoje</h2><p class="peq" style="margin:0"><b>${TIPOS[sug.tipo].nome}</b>: ${esc(sug.motivo)}</p></div>
+      <button class="btn quente" data-acao="usarSugestao" data-v="${sug.tipo}">Gerar</button></div>` : ''}
+    ${!ativo && (cfg.modelos || []).length ? `<div class="placa sobria"><h2>Os teus treinos</h2><div class="lista">${cfg.modelos.map(m => `<div class="item" data-acao="usarModelo" data-id="${m.id}" style="padding:12px"><div class="t"><b>${esc(m.nome)}</b><span>${m.itens.length} exercícios · ${m.itens.slice(0, 3).map(x => EXI[x.id] ? EXI[x.id].n : '').filter(Boolean).join(', ')}${m.itens.length > 3 ? '…' : ''}</span></div><span style="color:var(--chama)">${IC.seta}</span></div>`).join('')}</div></div>` : ''}
+    ${ativo ? '' : `<div class="placa sobria"><h2>Pede ao ferreiro</h2>${temIA() ? `<div class="linha"><input type="text" id="pedidoFerreiro" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
         <button class="btn icone" data-acao="falar" data-alvo="pedidoFerreiro" data-depois="pedirFerreiro" aria-label="Falar">${IC.mic}</button><button class="btn icone quente" data-acao="pedirFerreiro" aria-label="Pedir">${IC.seta}</button></div>
         <div class="chips" style="margin-top:10px">${['Tenho 20 minutos', 'Quero suar', 'Só halteres hoje', 'Dói-me o ombro'].map(t => chip(false, 'sugFerreiro', t, t)).join('')}</div>`
       : `<p class="suave peq" style="margin:0 0 10px">Diz o que te apetece treinar, por escrito ou por voz, e a IA monta o treino. Precisa da tua chave gratuita do Gemini.</p><button class="btn" data-acao="irPerfil">${IC.ia} Ligar a IA no Perfil</button>`}</div>`}
-    <div class="placa rebites"><div class="linha entre"><h2>Esta semana</h2><span class="suave peq">${feitos} de ${cfg.dias} treinos</span></div>
-      <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div></div>
-    ${sug ? `<div class="placa brasa"><h2>Sugestão de hoje</h2><p style="margin:0 0 12px"><b>${TIPOS[sug.tipo].nome}</b>: ${esc(sug.motivo)}</p>
-      <button class="btn quente" data-acao="usarSugestao" data-v="${sug.tipo}">Gerar este treino</button></div>` : ''}
-    <div class="placa rebites"><h2>Calor muscular</h2>
+    <div class="placa sobria"><h2>Calor muscular</h2>
       ${corpoSVG(cm.niveis)}
       <div class="legenda-calor"><span>frio</span><i></i><span>em brasa</span></div>
       <div id="calorInfo" class="calor-info suave peq">${(() => { const frios = MUSC_ESCOLHA.filter(m => !cm.niveis[m]).map(m => MUSC[m]); return frios.length ? `Mais frios: ${frios.slice(0, 4).join(', ')}.` : 'Corpo todo quente. Bom trabalho, ferreiro.'; })()}</div></div>
-    ${ultimo ? `<div class="placa rebites" data-acao="verTreino" data-id="${ultimo.id}" style="cursor:pointer"><h2>Último treino</h2>
+    ${ultimo ? `<div class="placa sobria" data-acao="verTreino" data-id="${ultimo.id}" style="cursor:pointer"><h2>Último treino</h2>
       <div class="linha entre"><div><b>${esc(ultimo.nome)}</b><div class="suave peq">${dataCurta(ultimo.inicio)} · ${fmtDur(ultimo.fim - ultimo.inicio)} · ${ultimo.itens.length} exercícios</div></div>
       <div class="quente cinzel" style="font-size:18px">${num(volumeDe(ultimo))} kg</div></div></div>` : ''}`;
 }
@@ -652,40 +657,64 @@ function preencherSugestoes(itens){
     });
   }
 }
-function cardEx(it, i){
-  const ex = EXI[it.id], u = ultimaVez(it.id), tempo = ehTempo(it.alvo);
-  return `<div class="placa rebites exercicio" id="ex${i}">
-    <div class="cab-ex"><img class="mini-img" src="${img(ex)}" alt="" data-acao="verEx" data-id="${ex.id}" onerror="this.style.visibility='hidden'">
-      <div class="cresce"><b data-acao="verEx" data-id="${ex.id}" style="cursor:pointer;font-size:15.5px">${esc(ex.n)}</b>
+// Modo foco: o exercício em curso fica aberto e grande; os outros ficam recolhidos e os acabados aparecem "forjados".
+function focoAtual(){
+  const L = ativo.itens;
+  if (ativo.foco != null && L[ativo.foco] && !L[ativo.foco].fase) return ativo.foco;
+  return L.findIndex(x => !x.fase && x.series.some(s => !s.feito));
+}
+const volumeItem = it => it.series.filter(s => s.feito).reduce((a, s) => a + (+s.kg || 0) * (+s.reps || 0), 0);
+function cardEx(it, i){ return i === focoAtual() ? cardExFoco(it, i) : cardExFechado(it, i); }
+function cardExFechado(it, i){
+  const ex = EXI[it.id], feitas = it.series.filter(s => s.feito), pronto = feitas.length === it.series.length && feitas.length > 0, vol = volumeItem(it);
+  return `<div class="placa exercicio fechado sobria${pronto ? ' forjado' : ''}" id="ex${i}" data-acao="focar" data-i="${i}">
+    <div class="cab-ex" style="align-items:center"><img class="mini-img" src="${img(ex)}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="cresce"><b>${esc(ex.n)}</b><div class="suave peq">${pronto ? esc(resumoSeries(feitas)) + (vol ? ` · ${num(vol)} kg` : '') : `${feitas.length}/${it.series.length} séries · ${it.series.length} × ${esc(it.alvo)}`}</div></div>
+      ${pronto ? `<span class="selo" aria-label="Exercício feito">${IC.visto}</span>` : `<span class="suave">${IC.baixo}</span>`}</div></div>`;
+}
+function cardExFoco(it, i){
+  const ex = EXI[it.id], u = ultimaVez(it.id), tempo = ehTempo(it.alvo), j = it.series.findIndex(x => !x.feito);
+  return `<div class="placa exercicio foco" id="ex${i}">
+    <div class="cab-ex"><img class="mini-img grande" src="${img(ex)}" alt="" data-acao="verEx" data-id="${ex.id}" onerror="this.style.visibility='hidden'">
+      <div class="cresce"><b class="nome-ex" data-acao="verEx" data-id="${ex.id}">${esc(ex.n)}</b>
         <div class="suave peq">${it.series.length} × ${it.alvo} · descanso ${fmtSeg(it.desc)}</div>
-        ${u ? `<div class="apagado mini">Última vez (${dataCurta(u.data)}): ${resumoSeries(u.series)}</div>` : ''}
         ${blocoProg(it.prog)}${it.nota ? `<div class="nota-ferreiro">${esc(it.nota)}</div>` : ''}</div>
       <button class="btn icone fantasma" data-acao="tMenu" data-i="${i}" aria-label="Opções">${IC.menu}</button></div>
     <table class="series"><tr><th>Série</th><th>Anterior</th><th>kg</th><th>${tempo ? 'Seg.' : 'Reps'}</th><th></th></tr>
-    ${it.series.map((s, j) => { const a = u && u.series[j]; return `<tr class="${s.feito ? 'feita' : ''}"><td>${j + 1}</td><td class="ant">${a ? fmtSerie(a) : '—'}</td>
-      <td><input type="number" inputmode="decimal" step="0.5" min="0" value="${esc(s.kg)}" placeholder="${a && +a.kg ? a.kg : '0'}" data-campo="kg" data-i="${i}" data-j="${j}"></td>
-      <td><input type="number" inputmode="numeric" min="0" value="${esc(s.reps)}" placeholder="${it.prog && it.prog.reps ? it.prog.reps : a ? a.reps : (parseInt(it.alvo) || '')}" data-campo="reps" data-i="${i}" data-j="${j}"></td>
-      <td><button class="visto" data-acao="feito" data-i="${i}" data-j="${j}" aria-label="Série feita">${IC.visto}</button></td></tr>`; }).join('')}
+    ${it.series.map((s, k) => { const a = u && u.series[k]; return `<tr class="${s.feito ? 'feita' : k === j ? 'agora' : ''}"><td>${k + 1}</td><td class="ant">${a ? fmtSerie(a) : '—'}</td>
+      <td><input type="number" inputmode="decimal" step="0.5" min="0" value="${esc(s.kg)}" placeholder="${a && +a.kg ? a.kg : '0'}" data-campo="kg" data-i="${i}" data-j="${k}"></td>
+      <td><input type="number" inputmode="numeric" min="0" value="${esc(s.reps)}" placeholder="${it.prog && it.prog.reps ? it.prog.reps : a ? a.reps : (parseInt(it.alvo) || '')}" data-campo="reps" data-i="${i}" data-j="${k}"></td>
+      <td><button class="visto" data-acao="feito" data-i="${i}" data-j="${k}" aria-label="Série ${k + 1} feita">${IC.visto}</button></td></tr>`; }).join('')}
     </table>
-    <div class="botoes"><button class="btn fantasma" data-acao="maisSerie" data-i="${i}">${IC.mais} Série</button><button class="btn fantasma" data-acao="menosSerie" data-i="${i}">Tirar série</button>${tempo ? '' : `<button class="btn fantasma" data-acao="ritmo" data-i="${i}">${IC.ritmo} Ritmo ${fmtSeg(tSerieDe(it.id))}</button>`}</div></div>`;
+    ${j >= 0 ? `<button class="btn quente grande serie-feita" data-acao="serieSeguinte" data-i="${i}">Série ${j + 1} de ${it.series.length} feita</button>`
+      : `<button class="btn grande" data-acao="desfocar">Fechar exercício</button>`}
+    <div class="botoes leves"><button class="btn fantasma" data-acao="maisSerie" data-i="${i}">${IC.mais} Série</button><button class="btn fantasma" data-acao="menosSerie" data-i="${i}">− Série</button>${tempo ? '' : `<button class="btn fantasma" data-acao="ritmo" data-i="${i}" aria-label="Cronómetro da série">${IC.ritmo} Ritmo ${fmtSeg(tSerieDe(it.id))}</button>`}</div></div>`;
+}
+const contasTreino = () => { const f = ativo.itens.reduce((a, it) => a + it.series.filter(s => s.feito).length, 0), t = ativo.itens.reduce((a, it) => a + it.series.length, 0); return {f, t, p: t ? f / t : 0}; };
+function barraProgresso(){
+  const c = contasTreino(), b = $('#tBarra'), n = $('#contaSeries'); if (n) n.textContent = `${c.f}/${c.t} séries`;
+  if (b){ const h = 8 + 40 * c.p, l = 26 + 50 * c.p; b.style.width = (c.p * 100) + '%'; b.style.background = `linear-gradient(90deg, #4a1406, hsl(${h},100%,${l}%))`; b.style.boxShadow = `0 0 ${4 + 12 * c.p}px hsla(${h},100%,55%,${.25 + .5 * c.p})`; }
 }
 function renderTreino(){
   if (!ativo){ irPara('vInicio'); return; }
-  const feitas = ativo.itens.reduce((a, it) => a + it.series.filter(s => s.feito).length, 0), total = ativo.itens.reduce((a, it) => a + it.series.length, 0);
   $('#vTreino').innerHTML = `
-    <div><h2>${esc(ativo.nome)}</h2><div class="linha entre" style="margin-top:6px"><div class="linha" style="gap:12px"><span class="relogio quente" id="cronoTreino">${fmtDur(Date.now() - ativo.inicio)}</span><span class="suave peq" id="contaSeries">${feitas}/${total} séries</span></div>
-      <div class="linha" style="gap:6px">${temIA() ? `<button class="btn peq-btn" data-acao="adaptar">${IC.ia} Adaptar</button>` : ''}<button class="btn perigo peq-btn" data-acao="cancelarTreino">Cancelar</button></div></div></div>
+    <div class="treino-topo"><div class="linha entre"><h2>${esc(ativo.nome)}</h2><div class="linha" style="gap:6px">${temIA() ? `<button class="btn peq-btn" data-acao="adaptar">${IC.ia} Adaptar</button>` : ''}<button class="btn perigo peq-btn" data-acao="cancelarTreino">Cancelar</button></div></div>
+      <div class="linha" style="gap:12px;margin-top:6px"><span class="relogio quente" id="cronoTreino">${fmtDur(Date.now() - ativo.inicio)}</span><div class="lingote cresce" style="margin:0"><i id="tBarra"></i></div><span class="suave peq" id="contaSeries"></span></div></div>
     ${(() => { const temFases = ativo.itens.some(it => it.fase); let ant = null; return ativo.itens.map((it, i) => { const f = it.fase || 'treino', h = temFases && f !== ant ? `<h3 class="sec-treino">${nomeFase(it.fase)}</h3>` : ''; ant = f; return h + (it.fase ? cardFase(it, i) : cardEx(it, i)); }).join(''); })() || '<div class="vazio">Sem exercícios. Acrescenta o primeiro.</div>'}
     <button class="btn" data-acao="tAdicionar">${IC.mais} Adicionar exercício</button>
     <button class="btn quente grande" data-acao="terminar">Terminar treino</button>`;
+  barraProgresso();
 }
 function atualizarCard(i){
   const el = $('#ex' + i); if (el) el.outerHTML = (ativo.itens[i].fase ? cardFase : cardEx)(ativo.itens[i], i);
-  const feitas = ativo.itens.reduce((a, it) => a + it.series.filter(s => s.feito).length, 0), total = ativo.itens.reduce((a, it) => a + it.series.length, 0);
-  const c = $('#contaSeries'); if (c) c.textContent = `${feitas}/${total} séries`;
+  barraProgresso();
+}
+function mudarFoco(i, rolar){
+  ativo.foco = i; guardarAtivo(true); renderTreino();
+  const el = $('#ex' + focoAtual()); if (el && rolar !== false) el.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start'});
 }
 function marcarFeito(btn){
-  const i = +btn.dataset.i, j = +btn.dataset.j, it = ativo.itens[i], s = it.series[j];
+  const i = +btn.dataset.i, j = +btn.dataset.j, it = ativo.itens[i], s = it.series[j], eraFoco = focoAtual() === i;
   s.feito = !s.feito;
   if (s.feito && cronoS && cronoS.i === i) pararCronoSerie();
   if (s.feito){
@@ -696,6 +725,13 @@ function marcarFeito(btn){
     Faiscas.de(btn, 22); vibrar(25);
     const ultima = !ativo.itens.slice(i + 1).some(x => !x.fase) && it.series.every(x => x.feito);
     if (!ultima) iniciarDescanso(it.desc);
+  }
+  if (s.feito && it.series.every(x => x.feito) && eraFoco){
+    // Exercício forjado: recolhe-o e passa para o seguinte.
+    ativo.foco = null; guardarAtivo(true); renderTreino();
+    const feito = $('#ex' + i); if (feito){ feito.classList.add('acende'); Faiscas.de(feito, 34); }
+    const prox = $('#ex' + focoAtual()); if (prox) setTimeout(() => prox.scrollIntoView({behavior: 'smooth', block: 'start'}), 350);
+    return;
   }
   guardarAtivo(true); atualizarCard(i);
 }
@@ -835,8 +871,8 @@ function renderExercicios(){
     const conta = id => EX.filter(e => e.req.includes(id) && podeFazer(e, meu)).length;
     const contaTodos = id => EX.filter(e => e.req.includes(id)).length;
     corpo = `<div class="placa rebites"><h2>O teu equipamento</h2><div class="grelha">${EQUIP.filter(e => meu.includes(e.id)).map(e => tileEq(e, true, 'exEq', `<span class="n">${conta(e.id)}</span>`)).join('')}</div></div>
-      <div class="placa rebites"><h2>Favoritos</h2>${cfg.favs.length ? `<div class="lista">${cfg.favs.map(id => EXI[id]).filter(Boolean).map(e => linhaEx(e)).join('')}</div>` : '<p class="suave peq" style="margin:0">Marca exercícios com a estrela para os teres sempre à mão e para aparecerem mais nos treinos gerados.</p>'}</div>
-      <details class="placa" ${exf.outros ? 'open' : ''} data-acao="exOutros"><summary><h2 style="display:inline">Outro equipamento</h2> <span class="suave peq">(ver exercícios que ainda não podes fazer)</span></summary>
+      <div class="placa sobria"><h2>Favoritos</h2>${cfg.favs.length ? `<div class="lista">${cfg.favs.map(id => EXI[id]).filter(Boolean).map(e => linhaEx(e)).join('')}</div>` : '<p class="suave peq" style="margin:0">Marca exercícios com a estrela para os teres sempre à mão e para aparecerem mais nos treinos gerados.</p>'}</div>
+      <details class="placa sobria" ${exf.outros ? 'open' : ''} data-acao="exOutros"><summary><h2 style="display:inline">Outro equipamento</h2> <span class="suave peq">(ver exercícios que ainda não podes fazer)</span></summary>
         <div class="grelha" style="margin-top:12px">${EQUIP.filter(e => !meu.includes(e.id)).map(e => tileEq(e, false, 'exEq', `<span class="n">${contaTodos(e.id)}</span>`)).join('')}</div></details>`;
   } else {
     const e = exf.eq && EQ[exf.eq];
@@ -929,21 +965,22 @@ function graficoEx(pts, fmt, melhor){
   </svg><div class="graf-dica" id="gExDica" hidden></div></div>`;
 }
 // Toque ou passagem do rato: mostra a data, o valor e as séries do treino mais próximo.
-function ligarGraficoEx(){
-  const svg = $('#gExSvg'); if (!svg) return;
-  const dica = $('#gExDica'), cruz = $('#gExCruz'), foco = $('#gExFoco');
+function ligarGrafico(pre, pts, W){
+  const svg = $('#' + pre + 'Svg'); if (!svg || !pts.length) return;
+  const dica = $('#' + pre + 'Dica'), cruz = $('#' + pre + 'Cruz'), foco = $('#' + pre + 'Foco');
   const mostrar = e => {
     const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const v = pt.matrixTransform(svg.getScreenCTM().inverse());
-    const p = gExPts.reduce((a, q) => Math.abs(q.x - v.x) < Math.abs(a.x - v.x) ? q : a, gExPts[0]);
+    const p = pts.reduce((a, q) => Math.abs(q.x - v.x) < Math.abs(a.x - v.x) ? q : a, pts[0]);
     cruz.setAttribute('x1', p.x); cruz.setAttribute('x2', p.x); cruz.setAttribute('opacity', '.7');
     foco.setAttribute('cx', p.x); foco.setAttribute('cy', p.y); foco.setAttribute('opacity', '1');
     dica.innerHTML = `<b>${esc(p.txt)}</b><span>${esc(p.sub)}</span>`; dica.hidden = false;
-    const caixa = svg.getBoundingClientRect(), px = p.x / 340 * caixa.width;
+    const caixa = svg.getBoundingClientRect(), px = p.x / W * caixa.width;
     dica.style.left = Math.max(0, Math.min(caixa.width - dica.offsetWidth, px - dica.offsetWidth / 2)) + 'px';
   };
   svg.addEventListener('pointermove', mostrar); svg.addEventListener('pointerdown', mostrar);
   svg.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse'){ dica.hidden = true; cruz.setAttribute('opacity', '0'); foco.setAttribute('opacity', '0'); } });
 }
+const ligarGraficoEx = () => ligarGrafico('gEx', gExPts, 340);
 // Apagar o histórico de um exercício (toque longo de 5 s): tira-o de todos os treinos guardados.
 function apagarHistoricoEx(id){
   const ex = EXI[id], afetados = treinos.filter(t => t.itens.some(it => it.id === id));
@@ -1036,8 +1073,94 @@ function renderHistorico(){
   for (const t of lista){ const k = new Date(t.inicio).toLocaleDateString('pt-PT', {month: 'long', year: 'numeric'}); (grupos[k] = grupos[k] || []).push(t); }
   $('#vHistorico').innerHTML = `<h2>Histórico</h2>
     <div class="estat"><div><b>${lista.length}</b><span>treinos</span></div><div><b>${doMes.length}</b><span>este mês</span></div><div><b>${num(lista.reduce((a, t) => a + volumeDe(t), 0) / 1000)} t</b><span>levantadas</span></div></div>
+    ${blocoBrasasHist()}${blocoVolumeSemanas()}${blocoMusculosSemana()}${blocoTrofeus()}
     ${Object.entries(grupos).map(([m, ts]) => `<h3 style="margin-top:6px">${m}</h3><div class="lista">${ts.map(t => `<div class="item" data-acao="verTreino" data-id="${t.id}" style="padding:12px">
       <div class="t"><b>${esc(t.nome)}</b><span>${dataCurta(t.inicio)} · ${fmtDur(t.fim - t.inicio)} · ${t.itens.length} exercícios</span></div><span class="quente cinzel">${num(volumeDe(t))} kg</span></div>`).join('')}</div>`).join('')}`;
+}
+/* ---------- Gráficos do Histórico ---------- */
+const segundaDe = ts => { const d = new Date(ts); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); };
+const seriesDe = t => t.itens.reduce((a, it) => a + (it.fase ? 0 : it.series.length), 0);
+const CORES_BRASA = ['#211914', '#6b3a2a', '#a8431a', '#e8691e', '#ffbe55'];
+let histMusc = 0;
+function porDia(){ const m = {}; for (const t of treinos){ const k = inicioDia(t.inicio); (m[k] = m[k] || []).push(t); } return m; }
+// Calendário de brasas: 12 semanas, um quadrado por dia; acende mais quanto mais séries fizeste.
+function blocoBrasasHist(){
+  const dias = porDia(), hoje = inicioDia(Date.now()), seg0 = segundaDe(Date.now()) - 11 * 7 * DIA, C = 25, G = 4, L = 18;
+  const nivel = n => !n ? 0 : n < 10 ? 1 : n < 18 ? 2 : n < 26 ? 3 : 4;
+  let cel = '', meses = '', mesAnt = -1, ativos = 0;
+  for (let w = 0; w < 12; w++){
+    const ini = new Date(seg0 + w * 7 * DIA + 3600e3), mes = ini.getMonth();
+    if (mes !== mesAnt){ meses += `<text x="${L + w * (C + G)}" y="10" font-size="10" fill="#8a796b">${ini.toLocaleDateString('pt-PT', {month: 'short'}).replace('.', '')}</text>`; mesAnt = mes; }
+    for (let d = 0; d < 7; d++){
+      const k = inicioDia(seg0 + (w * 7 + d) * DIA + 3600e3); if (k > hoje) continue;
+      const ts = dias[k] || [], n = ts.reduce((a, t) => a + seriesDe(t), 0), v = nivel(n), x = L + w * (C + G), y = 16 + d * (C + G);
+      if (v) ativos++;
+      cel += `<rect x="${x}" y="${y}" width="${C}" height="${C}" rx="5" fill="${CORES_BRASA[v]}"${v >= 3 ? ' filter="url(#hBrasa)"' : ''}${k === hoje ? ' stroke="#ffd27a" stroke-width="1.6"' : ' stroke="#0d0907" stroke-width="1"'} data-acao="hDia" data-v="${k}"/>`;
+    }
+  }
+  const W = L + 12 * (C + G), H = 16 + 7 * (C + G);
+  return `<div class="placa brasa"><h2>Brasas das últimas 12 semanas</h2>
+    <svg class="graf-brasas" viewBox="0 0 ${W} ${H}" role="img" aria-label="Calendário de treinos: ${ativos} dias com treino nas últimas 12 semanas">
+      <defs><filter id="hBrasa" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+      ${meses}${['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((l, d) => d % 2 ? '' : `<text x="0" y="${16 + d * (C + G) + 17}" font-size="10" fill="#8a796b">${l}</text>`).join('')}${cel}</svg>
+    <div class="linha entre peq"><span class="suave" id="hDiaTxt">${ativos} dias com treino. Toca num dia para o ver.</span>
+      <span class="legenda-brasas">menos ${CORES_BRASA.map(c => `<i style="background:${c}"></i>`).join('')} mais</span></div></div>`;
+}
+function blocoVolumeSemanas(){
+  const seg = segundaDe(Date.now()), sem = Array.from({length: 12}, (_, w) => ({ini: seg - (11 - w) * 7 * DIA, kg: 0, n: 0}));
+  for (const t of treinos){ const k = Math.round((segundaDe(t.inicio) - sem[0].ini) / (7 * DIA)); if (k >= 0 && k < 12){ sem[k].kg += volumeDe(t); sem[k].n++; } }
+  const max = Math.max(1, ...sem.map(x => x.kg)), W = 340, H = 150, L = 6, B = 22, T = 18, bw = (W - L * 2) / 12;
+  const barras = sem.map((x, w) => { const h = x.kg ? Math.max(4, (x.kg / max) * (H - T - B)) : 0, X = L + w * bw + 2, Y = H - B - h, atual = w === 11;
+    return `<g data-acao="hSem" data-v="${w}" data-kg="${Math.round(x.kg)}" data-n="${x.n}" data-ini="${x.ini}"><rect x="${X - 2}" y="${T}" width="${bw}" height="${H - T - B}" fill="transparent"/>
+      ${h ? `<path d="M${X} ${H - B}V${Y + 4}Q${X} ${Y} ${X + 4} ${Y}H${X + bw - 8}Q${X + bw - 4} ${Y} ${X + bw - 4} ${Y + 4}V${H - B}Z" fill="${atual ? 'url(#hVolA)' : 'url(#hVol)'}"/>` : `<rect x="${X}" y="${H - B - 2}" width="${bw - 4}" height="2" fill="#3a2c24"/>`}</g>`; }).join('');
+  const melhor = sem.reduce((a, b) => b.kg > a.kg ? b : a), iM = sem.indexOf(melhor), u = sem[11];
+  const rot = (w, txt, cor) => `<text x="${L + w * bw + bw / 2}" y="${Math.max(11, H - B - (sem[w].kg / max) * (H - T - B) - 5)}" text-anchor="middle" font-size="10" font-weight="700" fill="${cor}">${txt}</text>`;
+  const fmtD = ts => new Date(ts).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'}).replace('.', '');
+  return `<div class="placa sobria"><h2>Volume por semana</h2>
+    <svg class="graf-vol" viewBox="0 0 ${W} ${H}" role="img" aria-label="Volume levantado por semana nas últimas 12 semanas">
+      <defs><linearGradient id="hVol" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9581c"/><stop offset="1" stop-color="#5a1c08"/></linearGradient>
+        <linearGradient id="hVolA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd27a"/><stop offset=".5" stop-color="#ff8a2a"/><stop offset="1" stop-color="#8a2208"/></linearGradient></defs>
+      <line x1="${L}" x2="${W - L}" y1="${H - B}" y2="${H - B}" stroke="#3a2d25"/>${barras}
+      ${melhor.kg ? rot(iM, num(Math.round(melhor.kg / 100) / 10) + ' t', '#d6b48e') : ''}${u.kg && iM !== 11 ? rot(11, num(Math.round(u.kg / 100) / 10) + ' t', '#ffd27a') : ''}
+      <text x="${L}" y="${H - 6}" font-size="10" fill="#8a796b">${fmtD(sem[0].ini)}</text><text x="${W - L}" y="${H - 6}" text-anchor="end" font-size="10" fill="#8a796b">esta semana</text></svg>
+    <p class="suave peq" style="margin:0" id="hSemTxt">Esta semana: ${num(Math.round(u.kg))} kg em ${u.n} ${u.n === 1 ? 'treino' : 'treinos'}. Toca numa barra para ver outra semana.</p></div>`;
+}
+const GRUPOS_MUSC = [['Peito', ['peito']], ['Costas', ['dorsais', 'costas']], ['Ombros', ['ombros']], ['Bíceps', ['biceps']], ['Tríceps', ['triceps']],
+  ['Quadríceps', ['quads']], ['Posteriores', ['post']], ['Glúteos', ['gluteos']], ['Gémeos', ['gemeos']], ['Abdominais', ['abs']]];
+// Séries por grupo muscular na semana (principal conta 1, secundário meia), comparadas com o intervalo recomendado de 10 a 20.
+function blocoMusculosSemana(){
+  const ini = segundaDe(Date.now()) - histMusc * 7 * DIA, fim = ini + 7 * DIA, c = {};
+  for (const t of treinos) if (t.inicio >= ini && t.inicio < fim) for (const it of t.itens){
+    const ex = EXI[it.id]; if (!ex || it.fase || !['forca', 'pliometria'].includes(ex.c)) continue; const n = it.series.length;
+    for (const m of ex.p) c[m] = (c[m] || 0) + n; for (const m of ex.s) c[m] = (c[m] || 0) + n / 2;
+  }
+  const W = 340, L = 84, R = 44, max = 24, X = v => L + Math.min(v, max) / max * (W - L - R), lh = 22;
+  const linhas = GRUPOS_MUSC.map(([nome, ms], k) => {
+    const v = Math.max(...ms.map(m => c[m] || 0)), y = k * lh, cor = v >= 10 && v <= 20 ? '#ffc861' : v > 20 ? '#ff5a1f' : '#a8431a';
+    return `<text x="0" y="${y + 14}" font-size="11.5" fill="#cbb8a5">${nome}</text><rect x="${L}" y="${y + 5}" width="${W - L - R}" height="11" rx="3" fill="#211914"/>
+      ${v ? `<rect x="${L}" y="${y + 5}" width="${Math.max(3, X(v) - L)}" height="11" rx="3" fill="${cor}"/>` : ''}<text x="${W - R + 6}" y="${y + 14}" font-size="11" fill="#cbb8a5">${num(Math.round(v * 2) / 2)}</text>`; }).join('');
+  const H = GRUPOS_MUSC.length * lh + 18;
+  return `<div class="placa sobria"><div class="linha entre"><h2>Séries por músculo</h2><div class="chips">${chip(histMusc === 0, 'hMusc', 0, 'Esta semana')}${chip(histMusc === 1, 'hMusc', 1, 'Semana passada')}</div></div>
+    <svg class="graf-musc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Séries por grupo muscular na semana, com o intervalo recomendado de 10 a 20">
+      <rect x="${X(10)}" y="0" width="${X(20) - X(10)}" height="${GRUPOS_MUSC.length * lh + 2}" fill="#ffc861" opacity=".07"/>
+      <line x1="${X(10)}" x2="${X(10)}" y1="0" y2="${GRUPOS_MUSC.length * lh + 2}" stroke="#ffc861" stroke-dasharray="3 3" opacity=".45"/><line x1="${X(20)}" x2="${X(20)}" y1="0" y2="${GRUPOS_MUSC.length * lh + 2}" stroke="#ffc861" stroke-dasharray="3 3" opacity=".45"/>
+      ${linhas}<text x="${X(10)}" y="${H - 2}" text-anchor="middle" font-size="10" fill="#8a796b">10</text><text x="${X(20)}" y="${H - 2}" text-anchor="middle" font-size="10" fill="#8a796b">20</text></svg>
+    <p class="apagado mini" style="margin:0">A faixa dourada é o recomendado para crescer: 10 a 20 séries por semana em cada músculo. Exercícios em que o músculo ajuda contam meia série.</p></div>`;
+}
+// Parede de troféus: o melhor de sempre em cada exercício, do mais recente para o mais antigo.
+function blocoTrofeus(){
+  const rec = {};
+  for (const t of ordenados().reverse()) for (const it of t.itens){
+    const ex = EXI[it.id]; if (!ex || it.fase || !it.series.length) continue;
+    for (const s of it.series){
+      const v = +s.kg ? e1rm(s) : (+s.reps || 0) / 1000, r = rec[it.id];
+      if (!r || v > r.v + 1e-9) rec[it.id] = {v, s, data: t.inicio, id: it.id};
+    }
+  }
+  const lista = Object.values(rec).filter(r => r.v > 0).sort((a, b) => b.data - a.data).slice(0, 6);
+  if (!lista.length) return '';
+  return `<div class="placa sobria"><h2>Parede de troféus</h2><div class="trofeus">${lista.map(r => { const ex = EXI[r.id];
+    return `<div class="trofeu" data-acao="verEx" data-id="${r.id}"><span class="medalha">${IC.estrela}</span><div class="t"><b>${esc(ex.n)}</b><span>${+r.s.kg ? `${num(r.s.kg)} kg × ${r.s.reps} · força máx. est. ${num(Math.round(r.v))} kg` : `${r.s.reps} ${ehTempo(prescricao(ex).alvo) ? 's' : 'reps'}`}</span></div><span class="apagado mini">${new Date(r.data).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'}).replace('.', '')}</span></div>`; }).join('')}</div></div>`;
 }
 function folhaTreino(id){
   const t = treinos.find(x => x.id === id); if (!t) return;
@@ -1049,40 +1172,49 @@ function folhaTreino(id){
 /* ---------- Perfil ---------- */
 const gh = Object.assign({dono: '', repo: '', token: ''}, LS.get('gh', {}));
 const sync = Object.assign({shas: {}, sujos: {}, ultimo: 0, erro: ''}, LS.get('sync', {}));
+const gruposAbertos = Object.assign({treino: true}, LS.get('grupos', {}));
+const grupoAberto = n => gruposAbertos[n] ? ' open' : '';
+document.addEventListener('toggle', e => { const d = e.target; if (d.dataset && d.dataset.grupo){ gruposAbertos[d.dataset.grupo] = d.open; LS.set('grupos', gruposAbertos); } }, true);
 function renderPerfil(){
   const meu = meuEquip(), nImg = EX.filter(e => podeFazer(e, meu)).reduce((a, e) => a + e.i.length, 0);
   $('#vPerfil').innerHTML = `<h2>Perfil</h2>
-    <div class="placa rebites col"><label class="campo">Nome<input type="text" value="${esc(cfg.nome)}" data-campo="pNome" placeholder="O teu nome"></label>
+    <details class="grupo" data-grupo="treino"${grupoAberto('treino')}><summary><span class="grupo-tit">O teu treino</span><span class="suave peq">objetivo, nível, ginásio, tempos</span></summary><div class="grupo-corpo">
+    <div class="placa sobria rebites col"><label class="campo">Nome<input type="text" value="${esc(cfg.nome)}" data-campo="pNome" placeholder="O teu nome"></label>
       <div><h3>Objetivo</h3><div class="chips" style="margin-top:8px">${Object.entries(OBJETIVOS).map(([k, v]) => chip(cfg.objetivo === k, 'pObj', k, v[0])).join('')}</div></div>
       <div><h3>Nível</h3><div class="chips" style="margin-top:8px">${Object.entries(NIVEIS).map(([k, v]) => chip(cfg.nivel === +k, 'pNiv', k, v[0])).join('')}</div></div>
       <div><h3>Treinos por semana</h3><div class="chips" style="margin-top:8px">${[2, 3, 4, 5, 6].map(n => chip(cfg.dias === n, 'pDias', n, n)).join('')}</div></div>
       <div><h3>Duração habitual</h3><div class="chips" style="margin-top:8px">${[30, 45, 60, 75, 90].map(n => chip(cfg.duracao === n, 'pDur', n, n + ' min')).join('')}</div></div></div>
-    <div class="placa rebites"><h2>O meu ginásio</h2><p class="suave peq" style="margin:-4px 0 12px">O equipamento que tens em casa. É este que aparece para escolheres ao acender a forja.</p>
+    <div class="placa sobria rebites"><h2>O meu ginásio</h2><p class="suave peq" style="margin:-4px 0 12px">O equipamento que tens em casa. É este que aparece para escolheres ao acender a forja.</p>
       <div class="grelha">${EQUIP.filter(e => e.id !== 'corpo').map(e => tileEq(e, cfg.equip.includes(e.id), 'pEq')).join('')}</div></div>
-    <div class="placa rebites col"><h2>Tempo da série</h2><p class="suave peq" style="margin:0">Ao tocares em Ritmo num exercício, conta deste tempo até zero: quando chegar a zero, a série devia estar acabada. Os botões −15 e +15 durante a série ajustam o tempo e ficam guardados para esse exercício.</p>
+    <div class="placa sobria rebites col"><h2>Tempo da série</h2><p class="suave peq" style="margin:0">Ao tocares em Ritmo num exercício, conta deste tempo até zero: quando chegar a zero, a série devia estar acabada. Os botões −15 e +15 durante a série ajustam o tempo e ficam guardados para esse exercício.</p>
       <div class="linha entre"><span class="suave">Tempo base</span><div class="linha"><button class="btn icone" data-acao="pTSerie" data-d="-15" aria-label="Menos 15 segundos">−</button><b class="cinzel" style="min-width:56px;text-align:center;font-size:18px;color:var(--ouro)">${fmtSeg(tSerieBase())}</b><button class="btn icone" data-acao="pTSerie" data-d="15" aria-label="Mais 15 segundos">+</button></div></div></div>
-    <div class="placa rebites col"><h2>Aquecimento e alongamentos</h2><p class="suave peq" style="margin:0">Marca para virem sempre ligados ao acender a forja. Podes mudar antes de começar.</p>
+    <div class="placa sobria rebites col"><h2>Aquecimento e alongamentos</h2><p class="suave peq" style="margin:0">Marca para virem sempre ligados ao acender a forja. Podes mudar antes de começar.</p>
       <div class="chips">${chip(cfg.aquecer === true, 'pAquecer', '', 'Aquecimento')}${chip(cfg.alongar === true, 'pAlongar', '', 'Alongamentos no fim')}</div></div>
-    <div class="placa rebites col"><h2>Imagens sem internet</h2><p class="suave peq" style="margin:0">As imagens vêm da internet e ficam guardadas quando as vês. Para treinar sem rede, guarda já as dos exercícios que podes fazer (${nImg} imagens, cerca de ${Math.round(nImg * 38 / 1024)} MB).</p>
-      <button class="btn" data-acao="guardarImagens">Guardar imagens no dispositivo</button></div>
-    <div class="placa rebites col"><h2>Inteligência artificial</h2>
+    </div></details>
+    <details class="grupo" data-grupo="ia"${grupoAberto('ia')}><summary><span class="grupo-tit">Inteligência artificial</span><span class="suave peq">Gemini e reserva Groq</span></summary><div class="grupo-corpo">
+    <div class="placa sobria rebites col"><h2>Inteligência artificial</h2>
       <p class="suave peq" style="margin:0">A Forja usa o Gemini da Google, com uma chave gratuita tua. Fica guardada só neste dispositivo. Para criar: abre <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a>, entra com a conta Google, toca em "Create API key" e cola a chave aqui.</p>
       <label class="campo">Chave do Gemini<div class="linha"><input type="password" id="pChave" value="${esc(cfg.chave)}" placeholder="Cola aqui a chave" autocomplete="off"><button class="btn icone" data-acao="verChave">Ver</button></div></label>
       <div class="linha"><button class="btn quente" data-acao="testarIA">Guardar e testar ligação</button><span class="suave mini cresce" id="iaTeste">${cfg.chave ? 'Modelo: ' + esc(cfg.modelo) : ''}</span></div>
       ${!cfg.chave && IA.origemChave(cfg.chave) ? `<p class="suave mini" style="margin:6px 0 0">Sem chave própria: a usar a chave do Gemini ${IA.origemChave(cfg.chave) === 'outra app tua' ? 'de outra app tua' : 'da ' + esc(IA.origemChave(cfg.chave))}, neste aparelho.</p>` : !cfg.chave && IA.temGroq() ? '<p class="suave mini" style="margin:6px 0 0">Sem chave do Gemini: a IA usa o Groq de reserva.</p>' : ''}</div>
-    <div class="placa rebites col"><h2>IA de reserva (Groq)</h2>${IA.htmlGroq({sub: 'suave peq', pri: 'btn quente'})}</div>
-    <details class="placa col"><summary><h2 style="display:inline">Sincronização entre dispositivos</h2> <span class="suave peq">(opcional)</span></summary>
+    <div class="placa sobria rebites col"><h2>IA de reserva (Groq)</h2>${IA.htmlGroq({sub: 'suave peq', pri: 'btn quente'})}</div>
+    </div></details>
+    <details class="grupo" data-grupo="dados"${grupoAberto('dados')}><summary><span class="grupo-tit">Dados e app</span><span class="suave peq">sincronização, imagens, capa, cópia</span></summary><div class="grupo-corpo">
+    <div class="placa sobria rebites col"><h2>Imagens sem internet</h2><p class="suave peq" style="margin:0">As imagens vêm da internet e ficam guardadas quando as vês. Para treinar sem rede, guarda já as dos exercícios que podes fazer (${nImg} imagens, cerca de ${Math.round(nImg * 38 / 1024)} MB).</p>
+      <button class="btn" data-acao="guardarImagens">Guardar imagens no dispositivo</button></div>
+    <details class="placa sobria col"><summary><h2 style="display:inline">Sincronização entre dispositivos</h2> <span class="suave peq">(opcional)</span></summary>
       <div class="col" style="margin-top:12px"><p class="suave peq" style="margin:0">Guarda os treinos num repositório privado teu no GitHub, para teres os mesmos dados no telemóvel e no PC. Cria um repositório privado (por exemplo, forja-dados) e um token "fine-grained" com permissão Contents: Read and write só nesse repositório.</p>
       <label class="campo">Dono (utilizador GitHub)<input type="text" id="gDono" value="${esc(gh.dono)}" autocomplete="off"></label>
       <label class="campo">Repositório<input type="text" id="gRepo" value="${esc(gh.repo)}" placeholder="forja-dados" autocomplete="off"></label>
       <label class="campo">Token<input type="password" id="gToken" value="${esc(gh.token)}" autocomplete="off"></label>
       <div class="botoes"><button class="btn quente" data-acao="ligarGH">Ligar e sincronizar</button>${gh.token ? '<button class="btn perigo" data-acao="desligarGH">Desligar</button>' : ''}</div>
       <p class="suave peq" id="syncTxt" style="margin:0"></p></div></details>
-    <div class="placa rebites col"><h2>Capa</h2><p class="suave peq" style="margin:0">Ao abrir a app, três marteladas na bigorna para entrar. Mostra a peça da semana, que ganha forma a cada treino.</p>
+    <div class="placa sobria rebites col"><h2>Capa</h2><p class="suave peq" style="margin:0">Ao abrir a app, três marteladas na bigorna para entrar. Mostra a peça da semana, que ganha forma a cada treino.</p>
       <div class="chips">${chip(cfg.capa !== false, 'pCapa', '', 'Capa ao abrir')}${chip(cfg.som !== false, 'pSom', '', 'Som do martelo')}</div>
       <button class="btn" data-acao="verCapa">Ver a capa agora</button></div>
-    <div class="placa rebites col"><h2>Cópia de segurança</h2><p class="suave peq" style="margin:0">Exporta tudo para um ficheiro. Útil antes de mudares de telemóvel.</p>
+    <div class="placa sobria rebites col"><h2>Cópia de segurança</h2><p class="suave peq" style="margin:0">Exporta tudo para um ficheiro. Útil antes de mudares de telemóvel.</p>
       <div class="botoes"><button class="btn" data-acao="exportar">Exportar</button><button class="btn" data-acao="importar">Importar</button></div></div>
+    </div></details>
     <p class="apagado mini centro">Exercícios e imagens: Free Exercise DB (domínio público). Os conselhos da IA não substituem um profissional se tiveres dor ou lesão.</p>`;
   estadoSync();
 }
@@ -1526,7 +1658,7 @@ function gerarMobilidade(duracao, equip){
 }
 function cardFase(it, i){
   const ex = EXI[it.id], feito = it.series.every(s => s.feito);
-  return `<div class="placa exercicio fase${feito ? ' feita' : ''}" id="ex${i}"><div class="cab-ex" style="align-items:center">
+  return `<div class="placa exercicio fase sobria${feito ? ' feita' : ''}" id="ex${i}"><div class="cab-ex" style="align-items:center">
     <img class="mini-img" src="${img(ex)}" alt="" data-acao="verEx" data-id="${ex.id}" onerror="this.style.visibility='hidden'">
     <div class="cresce"><b data-acao="verEx" data-id="${ex.id}" style="cursor:pointer">${esc(ex.n)}</b><div class="suave peq">${it.series.length > 1 ? it.series.length + ' × ' : ''}${esc(it.alvo)}</div></div>
     <button class="btn icone fantasma" data-acao="tMenu" data-i="${i}" aria-label="Opções">${IC.menu}</button>
@@ -1557,10 +1689,11 @@ function tendencia(){
   return r;
 }
 function tendEm(serie, ts){ let v = null; for (const p of serie) if (p.ts <= ts) v = p; return v; }
+let gPesoPts = [];
 function graficoPeso(serie){
   const fim = serie[serie.length - 1].ts, ini = pesoRange ? fim - pesoRange * DIA : serie[0].ts;
   const pts = serie.filter(p => p.ts >= ini); if (!pts.length) return '';
-  const W = 340, H = 170, L = 36, R = 10, T = 12, B = 22;
+  const W = 340, H = 210, L = 36, R = 10, T = 12, B = 22;
   const vals = pts.flatMap(p => [p.kg, p.t]); if (cfg.meta) vals.push(cfg.meta);
   let ymin = Math.min(...vals) - .6, ymax = Math.max(...vals) + .6;
   if (cfg.meta && (cfg.meta < ymin - 8 || cfg.meta > ymax + 8)){ const v2 = pts.flatMap(p => [p.kg, p.t]); ymin = Math.min(...v2) - .6; ymax = Math.max(...v2) + .6; }
@@ -1572,7 +1705,8 @@ function graficoPeso(serie){
   const meta = cfg.meta && cfg.meta >= ymin && cfg.meta <= ymax ? `<line x1="${L}" x2="${W - R}" y1="${Y(cfg.meta)}" y2="${Y(cfg.meta)}" stroke="#ffc861" stroke-width="1.2" stroke-dasharray="5 5" opacity=".8"/><text x="${W - R}" y="${Y(cfg.meta) - 4}" text-anchor="end" font-size="10" fill="#ffc861">meta ${num(cfg.meta)}</text>` : '';
   const linha = pts.map((p, k) => (k ? 'L' : 'M') + X(p.ts).toFixed(1) + ' ' + Y(p.t).toFixed(1)).join('');
   const u = pts[pts.length - 1];
-  return `<svg class="grafico-peso" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico do peso">
+  gPesoPts = pts.map(p => ({x: X(p.ts), y: Y(p.t), txt: `${new Date(p.ts).toLocaleDateString('pt-PT', {weekday: 'short', day: 'numeric', month: 'short'})} · ${num(p.kg)} kg`, sub: `tendência ${num(Math.round(p.t * 10) / 10)} kg`}));
+  return `<div class="graf-ex"><svg class="grafico-peso" id="gPesoSvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico do peso">
     <defs><linearGradient id="gPeso" x1="0" x2="1"><stop offset="0" stop-color="#b3260e"/><stop offset=".6" stop-color="#ff8a2a"/><stop offset="1" stop-color="#ffd27a"/></linearGradient>
       <filter id="fPeso" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3"/></filter></defs>
     ${linhas.map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#3d3028" stroke-width="1"/><text x="${L - 6}" y="${Y(v) + 3.5}" text-anchor="end" font-size="10" fill="#76675b">${num(v)}</text>`).join('')}
@@ -1582,7 +1716,8 @@ function graficoPeso(serie){
     <path d="${linha}" fill="none" stroke="url(#gPeso)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
     <circle cx="${X(u.ts)}" cy="${Y(u.t)}" r="4.5" fill="#fff1cf" stroke="#ff8a2a" stroke-width="2"/>
     <text x="${L}" y="${H - 5}" font-size="10" fill="#76675b">${fmtD(x0)}</text><text x="${W - R}" y="${H - 5}" text-anchor="end" font-size="10" fill="#76675b">${fmtD(x1)}</text>
-  </svg>`;
+  <line id="gPesoCruz" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="#d8c3ad" stroke-width="1" stroke-dasharray="3 3" opacity="0"/><circle id="gPesoFoco" r="6" fill="none" stroke="#fff1cf" stroke-width="2" opacity="0"/>
+  </svg><div class="graf-dica" id="gPesoDica" hidden></div></div>`;
 }
 function renderPeso(){
   const serie = tendencia(), u = serie[serie.length - 1], hoje = hojeChave(), regHoje = pesos.find(p => p.d === hoje);
@@ -1603,23 +1738,27 @@ function renderPeso(){
     metaHtml = `<div class="linha entre peq"><span class="suave">Início ${num(inicio)} kg</span><span class="quente cinzel">${Math.round(prog * 100)}%</span><span class="suave">Meta ${num(cfg.meta)} kg</span></div>
       <div class="barra-meta"><i style="width:${prog * 100}%"></i></div><p class="suave peq" style="margin:0">${eta}</p>`;
   }
+  const mediaSem = k => { const ini = segundaDe(Date.now()) - k * 7 * DIA, l = pesos.filter(p => { const t = tsDia(p.d); return t >= ini && t < ini + 7 * DIA; }); return l.length ? l.reduce((a, p) => a + p.kg, 0) / l.length : null; };
+  const mA = mediaSem(0), mP = mediaSem(1), dM = mA != null && mP != null ? mA - mP : null;
   $('#vPeso').innerHTML = `<h2>Peso</h2>
-    <div class="placa rebites col"><h2>Registar</h2>
+    <div class="placa sobria col"><h2>Registar</h2>
       <div class="peso-input"><button class="btn icone" data-acao="pesoPasso" data-v="-0.1" aria-label="Menos">−</button><input type="number" id="pesoValor" step="0.1" min="20" max="400" inputmode="decimal" value="${valor}"><span class="cinzel suave">kg</span><button class="btn icone" data-acao="pesoPasso" data-v="0.1" aria-label="Mais">+</button></div>
       <div class="linha"><input type="date" id="pesoData" value="${hoje}" max="${hoje}" style="width:165px;flex:none"><button class="btn quente cresce" data-acao="registarPeso">${regHoje ? 'Atualizar' : 'Registar'}</button></div>
       <p class="suave mini" style="margin:0">${regHoje ? `Já registaste hoje: ${num(regHoje.kg)} kg.` : 'Pesa-te de manhã, depois da casa de banho e antes de comer, para comparares sempre nas mesmas condições.'}</p></div>
-    ${u ? `<div class="placa rebites"><h2>Peso real</h2>
+    ${u ? `<div class="placa brasa"><h2>Peso real</h2>
       <div class="linha entre" style="align-items:flex-end"><div><div class="cinzel quente" style="font-size:34px;line-height:1">${num(u.t.toFixed(1))} kg</div><div class="suave mini" style="margin-top:4px">tendência, sem as oscilações de água e comida</div></div>
         <div style="text-align:right">${variacao(7)}${variacao(30)}</div></div>
       ${graficoPeso(serie)}
-      <div class="chips">${[[30, '1 mês'], [90, '3 meses'], [365, '1 ano'], [0, 'Tudo']].map(([v, t]) => chip(pesoRange === v, 'pesoRange', v, t)).join('')}</div></div>
-    <div class="placa rebites col"><h2>Meta</h2>${metaHtml}
+      <div class="chips">${[[30, '1 mês'], [90, '3 meses'], [365, '1 ano'], [0, 'Tudo']].map(([v, t]) => chip(pesoRange === v, 'pesoRange', v, t)).join('')}</div>
+      ${mA != null ? `<div class="linha entre peq media-sem"><span class="suave">Média desta semana</span><span><b>${num(Math.round(mA * 10) / 10)} kg</b>${dM != null && Math.abs(dM) >= .05 ? ` <span style="color:${dM < 0 ? 'var(--ouro)' : 'var(--chama)'}">${dM > 0 ? '+' : '−'}${num(Math.abs(Math.round(dM * 10) / 10))} kg face à anterior</span>` : dM != null ? ' <span class="suave">igual à anterior</span>' : ''}</span></div>` : ''}</div>
+    <div class="placa sobria col"><h2>Meta</h2>${metaHtml}
       <div class="linha"><input type="number" id="pesoMeta" step="0.5" inputmode="decimal" placeholder="Peso que queres atingir" value="${cfg.meta || ''}"><button class="btn" data-acao="guardarMeta">Guardar meta</button></div></div>
-    <div class="placa rebites"><h2>Registos</h2><div class="lista">${pesos.slice().reverse().slice(0, 14).map((p, k, l) => { const ant = l[k + 1], d = ant ? p.kg - ant.kg : 0;
+    <div class="placa sobria"><h2>Registos</h2><div class="lista">${pesos.slice().reverse().slice(0, 14).map((p, k, l) => { const ant = l[k + 1], d = ant ? p.kg - ant.kg : 0;
       return `<div class="linha entre peq" style="padding:4px 0"><span class="suave" style="min-width:110px">${new Date(tsDia(p.d)).toLocaleDateString('pt-PT', {weekday: 'short', day: 'numeric', month: 'short'})}</span>
         <b>${num(p.kg)} kg</b><span class="apagado" style="min-width:54px;text-align:right">${ant ? (d > 0 ? '+' : d < 0 ? '−' : '') + num(Math.abs(d).toFixed(1)) : ''}</span>
         <button class="btn icone fantasma" data-acao="apagarPeso" data-v="${p.d}" aria-label="Apagar">${IC.lixo}</button></div>`; }).join('')}</div></div>`
     : '<div class="placa vazio">Regista o primeiro peso para começares a ver a tendência e o gráfico.</div>'}`;
+  ligarGrafico('gPeso', gPesoPts, 340);
 }
 async function sincPesos(){
   const rem = await lerRemoto('pesos.json');
@@ -1657,6 +1796,22 @@ function planoDeModelo(m){
 const BARRA = [[160, 184], [164, 184], [166, 184], [168, 184], [170, 184], [246, 184], [252, 189], [246, 194], [170, 194], [168, 194], [166, 194], [164, 194], [160, 194]];
 const LAMINA = [[112, 186], [140, 186], [140, 177], [147, 177], [147, 184], [285, 184], [312, 189], [285, 194], [147, 194], [147, 201], [140, 201], [140, 192], [112, 192]];
 const lerp = (a, b, f) => a + (b - a) * f;
+// A peça da semana em pequeno, para o topo do ecrã inicial: o mesmo ferro da capa sobre a face da bigorna.
+function pecaSVG(f){
+  const cx = lerp(206, 212, f), meia = lerp(40, 92, f);
+  return `<svg viewBox="96 166 236 44" role="img" aria-label="${f >= 1 ? 'Lâmina forjada' : 'Ferro em brasa a ganhar forma'}">
+    <defs><linearGradient id="hMetal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff8e4"/><stop offset=".25" stop-color="#ffe08f"/><stop offset=".55" stop-color="#ffa13c"/><stop offset=".8" stop-color="#e2541b"/><stop offset="1" stop-color="#8a2208"/></linearGradient>
+      <linearGradient id="hPontas" x1="0" x2="1"><stop offset="0" stop-color="#6a1405" stop-opacity=".9"/><stop offset=".28" stop-color="#6a1405" stop-opacity="0"/><stop offset=".72" stop-color="#6a1405" stop-opacity="0"/><stop offset="1" stop-color="#6a1405" stop-opacity=".9"/></linearGradient>
+      <linearGradient id="hFace" x1="0" x2="1"><stop offset="0" stop-color="#2a2320" stop-opacity="0"/><stop offset=".2" stop-color="#6d655f"/><stop offset=".5" stop-color="#b0a59d"/><stop offset=".8" stop-color="#6d655f"/><stop offset="1" stop-color="#2a2320" stop-opacity="0"/></linearGradient>
+      <filter id="hB3" x="-30%" y="-200%" width="160%" height="500%"><feGaussianBlur stdDeviation="3"/></filter><filter id="hB10" x="-40%" y="-300%" width="180%" height="700%"><feGaussianBlur stdDeviation="9"/></filter></defs>
+    <rect x="98" y="196" width="232" height="3" fill="url(#hFace)"/><rect x="98" y="199" width="232" height="9" fill="url(#hFace)" opacity=".25"/>
+    <ellipse cx="${cx}" cy="197" rx="${meia + 30}" ry="4" fill="#ff8a2a" opacity=".55" filter="url(#hB3)"/>
+    <ellipse class="peca-calor" cx="${cx}" cy="188" rx="${meia + 36}" ry="14" fill="#ff7a1c" opacity=".4" filter="url(#hB10)"/>
+    <path d="${formaPeca(f)}" fill="#ff9a3c" filter="url(#hB3)" opacity=".85"/>
+    <path class="peca-viva" d="${formaPeca(f)}" fill="url(#hMetal)"/><path d="${formaPeca(f)}" fill="url(#hPontas)"/>
+    <ellipse cx="${cx + 4}" cy="187" rx="${meia * .66}" ry="1.6" fill="#fffdf2" opacity=".9"/>
+  </svg>`;
+}
 const formaPeca = f => 'M' + BARRA.map((p, i) => lerp(p[0], LAMINA[i][0], f).toFixed(1) + ' ' + lerp(p[1], LAMINA[i][1], f).toFixed(1)).join(' L') + ' Z';
 const BIGORNA = 'M44 204.5Q80 197 118 194.5L146 194.5L146 189.5L326 189.5Q333 190 329 196.5L330 205Q329 211 320 213Q290 217 276 224Q262 232 262 246Q263 254 272 258L300 262Q306 264 306 270L306 273L280 273Q270 266 248 265L176 265Q154 266 144 273L118 273L118 270Q118 264 124 262L152 258Q161 254 162 246Q162 232 150 224Q136 216 112 213Q78 211 46 206.5Q43 205.8 44 204.5Z';
 // Bigorna de ferreiro em perspetiva ligeira (vista de frente, um pouco de cima e da esquerda, do lado da forja).
@@ -2038,11 +2193,16 @@ const ACOES = {
   },
   feito: marcarFeito,
   ritmo(a){ iniciarCronoSerie(+a.dataset.i); },
+  focar(a){ mudarFoco(+a.dataset.i); },
+  desfocar(){ ativo.foco = null; mudarFoco(null); },
+  serieSeguinte(a){ const i = +a.dataset.i, j = ativo.itens[i].series.findIndex(x => !x.feito); const bt = j >= 0 && $(`#ex${i} [data-acao="feito"][data-j="${j}"]`); if (bt) marcarFeito(bt); },
   sMais(){ ajustarCronoSerie(15000); }, sMenos(){ ajustarCronoSerie(-15000); }, sParar(){ pararCronoSerie(); },
   sFeita(){
     if (!cronoS) return; const {i, j} = cronoS; pararCronoSerie();
     if (vista !== 'vTreino') irPara('vTreino');
-    const bt = $(`#ex${i} [data-acao="feito"][data-j="${j}"]`); if (bt && !ativo.itens[i].series[j].feito) marcarFeito(bt);
+    let bt = $(`#ex${i} [data-acao="feito"][data-j="${j}"]`);
+    if (!bt){ ativo.foco = i; renderTreino(); bt = $(`#ex${i} [data-acao="feito"][data-j="${j}"]`); }
+    if (bt && !ativo.itens[i].series[j].feito) marcarFeito(bt);
   },
   pTSerie(a){ cfg.tSerie = Math.max(15, Math.min(600, tSerieBase() + +a.dataset.d)); guardarCfg(true); renderPerfil(); },
   maisSerie(a){ const it = ativo.itens[+a.dataset.i], u = it.series[it.series.length - 1]; it.series.push({kg: u ? u.kg : '', reps: u ? u.reps : '', feito: false, akg: 1, areps: 1}); guardarAtivo(true); atualizarCard(+a.dataset.i); },
@@ -2067,6 +2227,11 @@ const ACOES = {
   dMais(){ descanso.fim = Math.max(descanso.fim, Date.now()) + 15000; descanso.total += 15000; descanso.avisado = false; LS.set('descanso', descanso); desenharDescanso(); },
   dSaltar: pararDescanso,
   gEx(a){ grafEx = a.dataset.v; const b = $('#gEx'); if (b){ b.outerHTML = blocoProgressoEx(b.dataset.id); ligarGraficoEx(); } },
+  hDia(a){ const k = +a.dataset.v, ts = porDia()[k] || [], el = $('#hDiaTxt'); document.querySelectorAll('.graf-brasas rect.sel').forEach(r => r.classList.remove('sel')); a.classList.add('sel');
+    if (el) el.textContent = `${dataCurta(k)}: ` + (ts.length ? ts.map(t => `${t.nome} · ${seriesDe(t)} séries · ${num(volumeDe(t))} kg`).join('; ') : 'descanso'); },
+  hSem(a){ const el = $('#hSemTxt'), n = +a.dataset.n, ini = +a.dataset.ini; if (el) el.textContent = `Semana de ${new Date(ini).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'}).replace('.', '')}: ${num(+a.dataset.kg)} kg em ${n} ${n === 1 ? 'treino' : 'treinos'}.`;
+    document.querySelectorAll('.graf-vol g.sel').forEach(g => g.classList.remove('sel')); a.classList.add('sel'); },
+  hMusc(a){ histMusc = +a.dataset.v; renderHistorico(); },
   verEx(a){ const f = folhaAtual; voltarFolha = f === 'plano' ? folhaPlano : f === 'rapido' ? () => folhaRapido() : f.startsWith('treino:') ? () => folhaTreino(f.slice(7)) : null; folhaEx(a.dataset.id); },
   voltarFolha(){ const f = voltarFolha; voltarFolha = null; if (f) f(); },
   fav(a){ cfg.favs = alterna(cfg.favs, a.dataset.id); guardarCfg(true); folhaEx(a.dataset.id); if (vista === 'vExercicios') renderExercicios(); },
