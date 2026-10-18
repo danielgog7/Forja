@@ -304,17 +304,17 @@ textarea { resize: vertical; min-height: 58px; }
 @media (prefers-reduced-motion: reduce) { #lareira, .brasas i.acesa, #descanso.pronto, .placa.brasa::after, .opcao.on::after, .placa.acende::before { animation: none; } }
 /* Histórico curto nas listas e toque longo para o apagar */
 .item .t .hist-mini { display: block; margin-top: 2px; font-size: 12px; color: #d9a35c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-[data-hist] { position: relative; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
-[data-hist].a-apagar { border-color: #b8461a; }
-[data-hist].a-apagar::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: 2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #c2310c, #ff8a2a, #ffd27a); transform-origin: left; animation: encherApagar 4.4s linear forwards; box-shadow: 0 0 8px rgba(255,120,30,.6); }
-[data-hist].a-apagar::before { content: 'Continua a carregar para apagar o histórico'; position: absolute; right: 8px; bottom: 8px; z-index: 2; font-size: 11px; color: #ffb06a; background: rgba(18,12,9,.94); padding: 2px 7px; border-radius: 6px; pointer-events: none; }
+[data-hist], [data-apagar] { position: relative; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.a-apagar { border-color: #b8461a !important; }
+.a-apagar::after { display: block !important; content: ''; position: absolute; left: 6px; right: 6px; bottom: 2px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #c2310c, #ff8a2a, #ffd27a); transform-origin: left; animation: encherApagar 4.4s linear forwards; box-shadow: 0 0 8px rgba(255,120,30,.6); }
+.a-apagar::before { display: block !important; content: attr(data-aviso); position: absolute; right: 8px; bottom: 8px; z-index: 2; font-size: 11px; color: #ffb06a; background: rgba(18,12,9,.94); padding: 2px 7px; border-radius: 6px; pointer-events: none; }
 @keyframes encherApagar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 /* Gráfico de progresso por exercício */
 .graf-ex { position: relative; }
 .graf-ex svg { width: 100%; height: auto; display: block; touch-action: pan-y; font-family: system-ui, sans-serif; }
 .graf-dica { position: absolute; top: 0; pointer-events: none; background: #120d0a; border: 1px solid var(--aresta); border-radius: 10px; padding: 6px 9px; font-size: 12px; max-width: 230px; box-shadow: 0 6px 16px rgba(0,0,0,.5); }
 .graf-dica b { display: block; color: var(--texto); font-weight: 600; } .graf-dica span { color: var(--suave); }
-@media (prefers-reduced-motion: reduce) { [data-hist].a-apagar::after { animation-duration: .01s; animation-delay: 4.4s; } }
+@media (prefers-reduced-motion: reduce) { .a-apagar::after { display: block !important; animation-duration: .01s; animation-delay: 4.4s; } }
 /* Cronómetro da série (botão Ritmo) */
 #cronoSerie { position: fixed; z-index: 22; left: 50%; transform: translateX(-50%); bottom: calc(68px + env(safe-area-inset-bottom)); width: min(528px, calc(100% - 32px));
   border-radius: 14px; padding: 12px 14px; background: linear-gradient(180deg, #2a1f19, #17110d); border: 1px solid var(--aresta); box-shadow: var(--sombra); }
@@ -424,3 +424,6 @@ section.vista { animation: surgeForja .32s ease-out; }
 .espada-fim .espada { max-height: 90px; margin: 0 auto; }
 .arma-img .espada { max-width: 100%; }
 .espada-grande .espada { max-width: 116px; }
+
+.arma.a-apagar::before { left: 4px; right: 4px; bottom: 6px; text-align: center; }
+.placa.a-apagar::before { inset: auto 10px 10px auto; }

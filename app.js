@@ -492,7 +492,7 @@ function folhaEspada(segTs){
         <ul class="partes-espada">${E.tipo.partes.map((pt, i) => `<li class="${i < P.feitas ? 'ok' : i === P.feitas && !P.completa && atual ? 'agora' : ''}"><i></i>${pt[1]}</li>`).join('')}</ul>
         <div class="suave mini">${E.tipo.nome} · ${E.mat.nome}${E.comGema ? ' · ' + E.gema[0] : ''}</div></div></div>
     ${S.lista.length ? `<div class="estat" style="margin:12px 0"><div><b>${S.lista.length}</b><span>treinos</span></div><div><b>${series}</b><span>séries</span></div><div><b>${num(Math.round(vol / 100) / 10)} t</b><span>levantadas</span></div></div>
-      <div class="lista">${S.lista.map(t => `<div class="item" data-acao="verTreino" data-id="${t.id}" style="padding:10px 12px"><div class="t"><b>${esc(t.nome)}</b><span>${dataCurta(t.inicio)} · ${fmtDur(t.fim - t.inicio)} · ${seriesDe(t)} séries</span></div><span class="quente cinzel">${num(volumeDe(t))} kg</span></div>`).join('')}</div>
+      <div class="lista">${S.lista.map(t => `<div class="item" data-acao="verTreino" data-id="${t.id}" data-apagar="treino:${t.id}" style="padding:10px 12px"><div class="t"><b>${esc(t.nome)}</b><span>${dataCurta(t.inicio)} · ${fmtDur(t.fim - t.inicio)} · ${seriesDe(t)} séries</span></div><span class="quente cinzel">${num(volumeDe(t))} kg</span></div>`).join('')}</div>
       <p class="apagado mini" style="margin:8px 0 0">Tempo total a treinar: ${fmtDur(dur)}.</p>`
       : `<p class="suave peq">${atual ? 'Ainda não treinaste esta semana. O primeiro treino começa a forjar a lâmina.' : 'Nesta semana não houve treinos: a espada ficou só desenhada na bigorna.'}</p>`}`, 'espada');
 }
@@ -502,7 +502,7 @@ function blocoArsenal(){
   const semanas = Array.from({length: n}, (_, k) => semanaForja(segundaDeTs(hoje - k * 7 * DIA + 3600e3)));
   const completas = semanas.filter(S => S.prog.completa).length, mostrar = arsenalTodo ? semanas : semanas.slice(0, 9);
   return `<div class="placa brasa"><div class="linha entre"><h2>O teu arsenal</h2><span class="suave peq">${completas} de ${semanas.length} completas</span></div>
-    <div class="arsenal">${mostrar.map((S, k) => `<div class="arma${S.prog.completa ? ' completa' : ''}${k === 0 ? ' atual' : ''}" data-acao="verEspada" data-v="${S.seg}">
+    <div class="arsenal">${mostrar.map((S, k) => `<div class="arma${S.prog.completa ? ' completa' : ''}${k === 0 ? ' atual' : ''}" data-acao="verEspada" data-v="${S.seg}"${S.lista.length ? ` data-apagar="semana:${S.seg}"` : ''}>
       <div class="arma-img">${desenharEspada(S.esp, S.prog, {sufixo: 'a', passada: k > 0})}</div>
       <b>${esc(S.esp.tipo.nome)}</b><span>${k === 0 ? 'esta semana' : rotuloSemana(S.seg)}</span><span class="arma-conta">${S.dias}/${S.meta}</span></div>`).join('')}</div>
     ${semanas.length > 9 ? `<button class="btn fantasma" data-acao="arsenalTodo" style="width:100%;margin-top:8px">${arsenalTodo ? 'Mostrar só as últimas' : `Ver as ${semanas.length} espadas`}</button>` : ''}</div>`;
@@ -535,7 +535,7 @@ function renderInicio(){
       ${corpoSVG(cm.niveis)}
       <div class="legenda-calor"><span>frio</span><i></i><span>em brasa</span></div>
       <div id="calorInfo" class="calor-info suave peq">${(() => { const frios = MUSC_ESCOLHA.filter(m => !cm.niveis[m]).map(m => MUSC[m]); return frios.length ? `Mais frios: ${frios.slice(0, 4).join(', ')}.` : 'Corpo todo quente. Bom trabalho, ferreiro.'; })()}</div></div>
-    ${ultimo ? `<div class="placa sobria" data-acao="verTreino" data-id="${ultimo.id}" style="cursor:pointer"><h2>Último treino</h2>
+    ${ultimo ? `<div class="placa sobria" data-acao="verTreino" data-id="${ultimo.id}" data-apagar="treino:${ultimo.id}" style="cursor:pointer"><h2>Último treino</h2>
       <div class="linha entre"><div><b>${esc(ultimo.nome)}</b><div class="suave peq">${dataCurta(ultimo.inicio)} · ${fmtDur(ultimo.fim - ultimo.inicio)} · ${ultimo.itens.length} exercícios</div></div>
       <div class="quente cinzel" style="font-size:18px">${num(volumeDe(ultimo))} kg</div></div></div>` : ''}`;
 }
@@ -1048,19 +1048,55 @@ function apagarHistoricoEx(id){
   else if (folhaAtual === 'seletor') listaSeletor();
   else if ($('#animEx')) folhaEx(id);
 }
+// Toque longo de 5 s para apagar. data-apagar = "treino:<id>", "semana:<segunda>", "trofeu:<exercício>" ou "item:<treino>:<índice>".
+function tirarTreino(t, agora){ treinos = treinos.filter(x => x.id !== t.id); apagados[t.id] = {mes: chaveMes(t.inicio), ts: agora}; marcarSujo(chaveMes(t.inicio)); }
+function apagarPorToque(alvo){
+  const [tipo, a, b] = alvo.split(':'), agora = Date.now(), plural = (n, um, mais) => n + ' ' + (n === 1 ? um : mais);
+  let feito = '';
+  if (tipo === 'treino'){
+    const t = treinos.find(x => x.id === a); if (!t) return;
+    if (!confirm(`Apagar o treino "${t.nome}" de ${dataCurta(t.inicio)}?\n\nSai do histórico, das espadas e dos gráficos. Não dá para desfazer.`)) return;
+    tirarTreino(t, agora); feito = 'Treino apagado.';
+  } else if (tipo === 'semana'){
+    const S = semanaForja(+a); if (!S.lista.length) return toast('Esta espada não tem treinos para apagar.');
+    if (!confirm(`Apagar a espada ${S.esp.nome} «${S.esp.epiteto}»?\n\nApaga também ${plural(S.lista.length, 'o treino', 'os treinos')} da semana de ${rotuloSemana(S.seg)}: ${S.lista.map(t => t.nome).join(', ')}. Não dá para desfazer.`)) return;
+    for (const t of S.lista) tirarTreino(t, agora); feito = 'Espada e treinos dessa semana apagados.';
+  } else if (tipo === 'trofeu'){
+    const r = recordesEx()[a], t = r && treinos.find(x => x.id === r.tid); if (!t) return;
+    if (!confirm(`Apagar o recorde de "${EXI[a].n}"?\n\nTira a série ${fmtSerie(r.s)} do treino de ${dataCurta(t.inicio)}. O troféu passa para a tua melhor marca seguinte. Não dá para desfazer.`)) return;
+    for (const it of t.itens){ const k = it.series.indexOf(r.s); if (it.id === a && k >= 0){ it.series.splice(k, 1); break; } }
+    t.itens = t.itens.filter(it => it.series.length);
+    if (t.itens.length){ t.atualizado = agora; marcarSujo(chaveMes(t.inicio)); } else tirarTreino(t, agora);
+    feito = 'Recorde apagado.';
+  } else if (tipo === 'item'){
+    const t = treinos.find(x => x.id === a), it = t && t.itens[+b], ex = it && EXI[it.id]; if (!ex) return;
+    if (!confirm(`Tirar "${ex.n}" deste treino?\n\n${t.itens.length === 1 ? 'É o único exercício: o treino fica apagado. ' : ''}Não dá para desfazer.`)) return;
+    t.itens.splice(+b, 1);
+    if (t.itens.length){ t.atualizado = agora; marcarSujo(chaveMes(t.inicio)); } else tirarTreino(t, agora);
+    feito = 'Exercício tirado do treino.';
+  } else return;
+  guardarTreinos(); cacheUlt = null; toast(feito);
+  const aberto = folhaAtual;
+  if (aberto.startsWith('treino:') && treinos.some(x => x.id === aberto.slice(7))) folhaTreino(aberto.slice(7));
+  else if (aberto === 'espada' && tipo !== 'semana' && $('#folha') && !$('#folha').hidden) fecharFolha();
+  else if (!$('#folha').hidden && (tipo === 'semana' || aberto.startsWith('treino:'))) fecharFolha();
+  RENDER[vista]();
+}
+const AVISOS = {treino: 'Mantém para apagar o treino', semana: 'Mantém…', trofeu: 'Mantém para apagar o recorde', item: 'Mantém para tirar o exercício'};
 (() => {
   let alvo = null, tIni = 0, tFim = 0, x0 = 0, y0 = 0, engolir = false;
   const limpar = () => { clearTimeout(tIni); clearTimeout(tFim); if (alvo) alvo.classList.remove('a-apagar'); alvo = null; };
   document.addEventListener('pointerdown', e => {
-    const el = e.target.closest && e.target.closest('[data-hist]'); limpar(); if (!el || !e.isPrimary) return;
+    const el = e.target.closest && e.target.closest('[data-hist], [data-apagar]'); limpar(); if (!el || !e.isPrimary) return;
     alvo = el; x0 = e.clientX; y0 = e.clientY;
+    el.dataset.aviso = el.dataset.apagar ? AVISOS[el.dataset.apagar.split(':')[0]] || 'Mantém para apagar' : 'Continua a carregar para apagar o histórico';
     tIni = setTimeout(() => { if (alvo === el){ el.classList.add('a-apagar'); vibrar(15); } }, 600);
-    tFim = setTimeout(() => { if (alvo !== el) return; const id = el.dataset.hist; limpar(); engolir = true; setTimeout(() => { engolir = false; }, 900); vibrar([30, 40, 30]); apagarHistoricoEx(id); }, 5000);
+    tFim = setTimeout(() => { if (alvo !== el) return; const h = el.dataset.hist, ap = el.dataset.apagar; limpar(); engolir = true; setTimeout(() => { engolir = false; }, 900); vibrar([30, 40, 30]); if (ap) apagarPorToque(ap); else apagarHistoricoEx(h); }, 5000);
   }, true);
   document.addEventListener('pointermove', e => { if (alvo && Math.hypot(e.clientX - x0, e.clientY - y0) > 10) limpar(); }, true);
   ['pointerup', 'pointercancel', 'scroll'].forEach(ev => document.addEventListener(ev, limpar, true));
   document.addEventListener('click', e => { if (engolir){ e.stopPropagation(); e.preventDefault(); engolir = false; } }, true);
-  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('[data-hist]')) e.preventDefault(); });
+  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('[data-hist], [data-apagar]')) e.preventDefault(); });
 })();
 function blocoDicas(ex, d){
   if (ex.pt) return `<ol class="passos-ex">${ex.ins.map(p => `<li>${esc(p)}</li>`).join('')}</ol>${(ex.dc || []).length ? `<div class="placa brasa" style="padding:12px"><h2 style="margin-bottom:6px">Conselhos do ferreiro</h2><ul class="dicas">${ex.dc.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}`;
@@ -1122,8 +1158,9 @@ function renderHistorico(){
   for (const t of lista){ const k = new Date(t.inicio).toLocaleDateString('pt-PT', {month: 'long', year: 'numeric'}); (grupos[k] = grupos[k] || []).push(t); }
   $('#vHistorico').innerHTML = `<h2>Histórico</h2>
     <div class="estat"><div><b>${lista.length}</b><span>treinos</span></div><div><b>${doMes.length}</b><span>este mês</span></div><div><b>${num(lista.reduce((a, t) => a + volumeDe(t), 0) / 1000)} t</b><span>levantadas</span></div></div>
+    <p class="apagado mini centro" style="margin:-4px 0 0">Para apagar, mantém o dedo 5 segundos num treino, numa espada ou num troféu.</p>
     ${blocoArsenal()}${blocoBrasasHist()}${blocoVolumeSemanas()}${blocoMusculosSemana()}${blocoTrofeus()}
-    ${Object.entries(grupos).map(([m, ts]) => `<h3 style="margin-top:6px">${m}</h3><div class="lista">${ts.map(t => `<div class="item" data-acao="verTreino" data-id="${t.id}" style="padding:12px">
+    ${Object.entries(grupos).map(([m, ts]) => `<h3 style="margin-top:6px">${m}</h3><div class="lista">${ts.map(t => `<div class="item" data-acao="verTreino" data-id="${t.id}" data-apagar="treino:${t.id}" style="padding:12px">
       <div class="t"><b>${esc(t.nome)}</b><span>${dataCurta(t.inicio)} · ${fmtDur(t.fim - t.inicio)} · ${t.itens.length} exercícios</span></div><span class="quente cinzel">${num(volumeDe(t))} kg</span></div>`).join('')}</div>`).join('')}`;
 }
 /* ---------- Gráficos do Histórico ---------- */
@@ -1197,24 +1234,27 @@ function blocoMusculosSemana(){
     <p class="apagado mini" style="margin:0">A faixa dourada é o recomendado para crescer: 10 a 20 séries por semana em cada músculo. Exercícios em que o músculo ajuda contam meia série.</p></div>`;
 }
 // Parede de troféus: o melhor de sempre em cada exercício, do mais recente para o mais antigo.
-function blocoTrofeus(){
+function recordesEx(){
   const rec = {};
   for (const t of ordenados().reverse()) for (const it of t.itens){
     const ex = EXI[it.id]; if (!ex || it.fase || !it.series.length) continue;
     for (const s of it.series){
       const v = +s.kg ? e1rm(s) : (+s.reps || 0) / 1000, r = rec[it.id];
-      if (!r || v > r.v + 1e-9) rec[it.id] = {v, s, data: t.inicio, id: it.id};
+      if (!r || v > r.v + 1e-9) rec[it.id] = {v, s, data: t.inicio, id: it.id, tid: t.id};
     }
   }
-  const lista = Object.values(rec).filter(r => r.v > 0).sort((a, b) => b.data - a.data).slice(0, 6);
+  return rec;
+}
+function blocoTrofeus(){
+  const lista = Object.values(recordesEx()).filter(r => r.v > 0).sort((a, b) => b.data - a.data).slice(0, 6);
   if (!lista.length) return '';
   return `<div class="placa sobria"><h2>Parede de troféus</h2><div class="trofeus">${lista.map(r => { const ex = EXI[r.id];
-    return `<div class="trofeu" data-acao="verEx" data-id="${r.id}"><span class="medalha">${IC.estrela}</span><div class="t"><b>${esc(ex.n)}</b><span>${+r.s.kg ? `${num(r.s.kg)} kg × ${r.s.reps} · força máx. est. ${num(Math.round(r.v))} kg` : `${r.s.reps} ${ehTempo(prescricao(ex).alvo) ? 's' : 'reps'}`}</span></div><span class="apagado mini">${new Date(r.data).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'}).replace('.', '')}</span></div>`; }).join('')}</div></div>`;
+    return `<div class="trofeu" data-acao="verEx" data-id="${r.id}" data-apagar="trofeu:${r.id}"><span class="medalha">${IC.estrela}</span><div class="t"><b>${esc(ex.n)}</b><span>${+r.s.kg ? `${num(r.s.kg)} kg × ${r.s.reps} · força máx. est. ${num(Math.round(r.v))} kg` : `${r.s.reps} ${ehTempo(prescricao(ex).alvo) ? 's' : 'reps'}`}</span></div><span class="apagado mini">${new Date(r.data).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'}).replace('.', '')}</span></div>`; }).join('')}</div></div>`;
 }
 function folhaTreino(id){
   const t = treinos.find(x => x.id === id); if (!t) return;
   abrirFolha(cab(esc(t.nome)) + `<p class="suave peq" style="margin:-6px 0 12px">${new Date(t.inicio).toLocaleString('pt-PT', {weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'})} · ${fmtDur(t.fim - t.inicio)} · ${num(volumeDe(t))} kg</p>
-    <div class="lista">${t.itens.map(it => { const ex = EXI[it.id]; return ex ? `<div class="item" data-acao="verEx" data-id="${ex.id}"><img class="mini-img" src="${img(ex)}" alt="" onerror="this.style.visibility='hidden'"><div class="t"><b>${esc(ex.n)}</b><span>${resumoSeries(it.series)}</span></div></div>` : ''; }).join('')}</div>
+    <div class="lista">${t.itens.map((it, k) => { const ex = EXI[it.id]; return ex ? `<div class="item" data-acao="verEx" data-id="${ex.id}" data-apagar="item:${t.id}:${k}"><img class="mini-img" src="${img(ex)}" alt="" onerror="this.style.visibility='hidden'"><div class="t"><b>${esc(ex.n)}</b><span>${resumoSeries(it.series)}</span></div></div>` : ''; }).join('')}</div>
     <div class="botoes" style="margin-top:14px"><button class="btn quente" data-acao="repetir" data-id="${t.id}">Repetir este treino</button><button class="btn perigo" data-acao="apagarTreino" data-id="${t.id}">${IC.lixo} Apagar</button></div>`, 'treino:' + t.id);
 }
 
