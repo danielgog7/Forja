@@ -119,6 +119,8 @@ const FRASES = ['Malha enquanto o ferro está quente.', 'Cada série é uma mart
 /* ---------- Estado ---------- */
 const BASE = EQUIP.filter(e => e.base).map(e => e.id);
 let cfg = Object.assign({nome: '', objetivo: 'hipertrofia', nivel: 1, dias: 3, duracao: 60, equip: BASE.slice(), favs: [], modelos: [], meta: 0, chave: '', modelo: 'gemini-flash-latest', pronto: false, ts: 0}, LS.get('cfg', {}));
+// Há IA: a chave própria, a de outra app deste aparelho (ia-comum.js) ou a do Groq.
+const temIA = () => IA.temIA(cfg.chave);
 let treinos = LS.get('treinos', []);
 let apagados = LS.get('apagados', {});
 let ativo = LS.get('ativo', null);
@@ -471,7 +473,7 @@ function renderInicio(){
     <div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
     ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
     ${!ativo && (cfg.modelos || []).length ? `<div class="placa rebites"><h2>Os teus treinos</h2><div class="lista">${cfg.modelos.map(m => `<div class="item" data-acao="usarModelo" data-id="${m.id}" style="padding:12px"><div class="t"><b>${esc(m.nome)}</b><span>${m.itens.length} exercícios · ${m.itens.slice(0, 3).map(x => EXI[x.id] ? EXI[x.id].n : '').filter(Boolean).join(', ')}${m.itens.length > 3 ? '…' : ''}</span></div><span style="color:var(--chama)">${IC.seta}</span></div>`).join('')}</div></div>` : ''}
-    ${ativo ? '' : `<div class="placa rebites"><h2>Pede ao ferreiro</h2>${cfg.chave ? `<div class="linha"><input type="text" id="pedidoFerreiro" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
+    ${ativo ? '' : `<div class="placa rebites"><h2>Pede ao ferreiro</h2>${temIA() ? `<div class="linha"><input type="text" id="pedidoFerreiro" placeholder="Ex.: 30 min, costas e bíceps" enterkeyhint="send" autocomplete="off">
         <button class="btn icone" data-acao="falar" data-alvo="pedidoFerreiro" data-depois="pedirFerreiro" aria-label="Falar">${IC.mic}</button><button class="btn icone quente" data-acao="pedirFerreiro" aria-label="Pedir">${IC.seta}</button></div>
         <div class="chips" style="margin-top:10px">${['Tenho 20 minutos', 'Quero suar', 'Só halteres hoje', 'Dói-me o ombro'].map(t => chip(false, 'sugFerreiro', t, t)).join('')}</div>`
       : `<p class="suave peq" style="margin:0 0 10px">Diz o que te apetece treinar, por escrito ou por voz, e a IA monta o treino. Precisa da tua chave gratuita do Gemini.</p><button class="btn" data-acao="irPerfil">${IC.ia} Ligar a IA no Perfil</button>`}</div>`}
@@ -531,10 +533,10 @@ function folhaRapido(manter){
     ${rapido.equip.length ? `<section><div class="linha entre"><h3>Exercícios</h3><span class="suave peq">${ex.lista.length} disponíveis</span></div>
       <div class="lista" id="rLista">${ex.lista.slice(0, rapido.limite).map(e => linhaRapido(e, ex.cont)).join('') || '<div class="vazio">Nenhum exercício com esta escolha.</div>'}</div>
       ${ex.lista.length > rapido.limite ? '<button class="btn fantasma" data-acao="rMais" style="width:100%">Mostrar mais</button>' : ''}</section>` : ''}
-    ${cfg.chave ? `<section><h3>Indicações para o ferreiro</h3><div class="linha"><textarea id="rPedido" data-campo="rPedido" rows="2" placeholder="Ex.: quero focar no peito, dói-me o pulso">${esc(rapido.pedido || '')}</textarea><button class="btn icone" data-acao="falar" data-alvo="rPedido" aria-label="Falar">${IC.mic}</button></div></section>` : ''}
+    ${temIA() ? `<section><h3>Indicações para o ferreiro</h3><div class="linha"><textarea id="rPedido" data-campo="rPedido" rows="2" placeholder="Ex.: quero focar no peito, dói-me o pulso">${esc(rapido.pedido || '')}</textarea><button class="btn icone" data-acao="falar" data-alvo="rPedido" aria-label="Falar">${IC.mic}</button></div></section>` : ''}
     <div class="chips">${chip(rapido.aquec, 'rAquec', '', 'Aquecimento')}${chip(rapido.along, 'rAlong', '', 'Alongamentos no fim')}</div>
     <div class="col" style="gap:8px"><button class="btn quente grande" id="rComecar" data-acao="rComecar">${rotuloComecar()}</button>
-      ${cfg.chave ? `<button class="btn" data-acao="gerarIA">${IC.ia} Pedir ao ferreiro</button>` : ''}</div></div>`, 'rapido');
+      ${temIA() ? `<button class="btn" data-acao="gerarIA">${IC.ia} Pedir ao ferreiro</button>` : ''}</div></div>`, 'rapido');
   if (st) cx.scrollTop = st;
 }
 function atualizarEscolhidos(){
@@ -592,7 +594,7 @@ function folhaPlano(){
       ${it.fase ? '' : `<button class="btn icone" data-acao="pTrocar" data-i="${i}" aria-label="Trocar">${IC.trocar}</button>`}
       <button class="btn icone" data-acao="pTirar" data-i="${i}" aria-label="Tirar">${IC.x}</button></div>`; }).join('') || '<div class="vazio">Ainda sem exercícios. Acrescenta os que quiseres.</div>'}</div>
     ${fase('Alongamentos', rapido.fasesAl)}
-    <div class="botoes" style="margin-top:12px"><button class="btn" data-acao="pAdicionar">${IC.mais} Exercício</button>${rapido.tipo !== 'livre' && !rapido.modelo ? `<button class="btn" data-acao="${rapido.nota && cfg.chave ? 'gerarIA' : 'pOutro'}">Gerar outro</button>` : ''}</div>
+    <div class="botoes" style="margin-top:12px"><button class="btn" data-acao="pAdicionar">${IC.mais} Exercício</button>${rapido.tipo !== 'livre' && !rapido.modelo ? `<button class="btn" data-acao="${rapido.nota && temIA() ? 'gerarIA' : 'pOutro'}">Gerar outro</button>` : ''}</div>
     <div class="botoes" style="margin-top:6px">${rapido.modelo ? '<button class="btn fantasma perigo" data-acao="apagarModelo">Apagar modelo</button>' : `<button class="btn fantasma" data-acao="guardarModelo" ${p.length ? '' : 'disabled'}>Guardar como modelo</button>`}</div>
     <button class="btn quente grande" style="margin-top:8px" data-acao="comecar" ${p.length ? '' : 'disabled'}>Começar treino</button>`, 'plano');
 }
@@ -672,7 +674,7 @@ function renderTreino(){
   const feitas = ativo.itens.reduce((a, it) => a + it.series.filter(s => s.feito).length, 0), total = ativo.itens.reduce((a, it) => a + it.series.length, 0);
   $('#vTreino').innerHTML = `
     <div><h2>${esc(ativo.nome)}</h2><div class="linha entre" style="margin-top:6px"><div class="linha" style="gap:12px"><span class="relogio quente" id="cronoTreino">${fmtDur(Date.now() - ativo.inicio)}</span><span class="suave peq" id="contaSeries">${feitas}/${total} séries</span></div>
-      <div class="linha" style="gap:6px">${cfg.chave ? `<button class="btn peq-btn" data-acao="adaptar">${IC.ia} Adaptar</button>` : ''}<button class="btn perigo peq-btn" data-acao="cancelarTreino">Cancelar</button></div></div></div>
+      <div class="linha" style="gap:6px">${temIA() ? `<button class="btn peq-btn" data-acao="adaptar">${IC.ia} Adaptar</button>` : ''}<button class="btn perigo peq-btn" data-acao="cancelarTreino">Cancelar</button></div></div></div>
     ${(() => { const temFases = ativo.itens.some(it => it.fase); let ant = null; return ativo.itens.map((it, i) => { const f = it.fase || 'treino', h = temFases && f !== ant ? `<h3 class="sec-treino">${nomeFase(it.fase)}</h3>` : ''; ant = f; return h + (it.fase ? cardFase(it, i) : cardEx(it, i)); }).join(''); })() || '<div class="vazio">Sem exercícios. Acrescenta o primeiro.</div>'}
     <button class="btn" data-acao="tAdicionar">${IC.mais} Adicionar exercício</button>
     <button class="btn quente grande" data-acao="terminar">Terminar treino</button>`;
@@ -875,7 +877,7 @@ function folhaEx(id){
     </div>`);
   clearInterval(tAnim);
   if (ex.i.length > 1) tAnim = setInterval(() => { const a = $('#animEx'); if (a) a.classList.toggle('b'); else clearInterval(tAnim); }, 1100);
-  if (!d && cfg.chave && !ex.pt) pedirDicas(id);
+  if (!d && temIA() && !ex.pt) pedirDicas(id);
   ligarGraficoEx();
 }
 /* ---------- Progresso por exercício ---------- */
@@ -981,7 +983,7 @@ function blocoDicas(ex, d){
     ${d.erros.length ? `<div class="placa" style="padding:12px"><h2 style="margin-bottom:6px">Erros comuns</h2><ul class="dicas">${d.erros.map(p => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
     ${d.respiracao ? `<p class="suave peq" style="margin:0"><b>Respiração:</b> ${esc(d.respiracao)}</p>` : ''}`;
   return `<ol class="passos-ex" lang="en">${ex.ins.map(p => `<li>${esc(p)}</li>`).join('')}</ol>
-    <p class="suave peq" id="iaEstado" style="margin:10px 0 0">${cfg.chave ? 'A traduzir e a preparar conselhos…' : 'Instruções em inglês. Com a tua chave do Gemini (Perfil, Inteligência artificial), aparecem em português, com conselhos de técnica.'}</p>`;
+    <p class="suave peq" id="iaEstado" style="margin:10px 0 0">${temIA() ? 'A traduzir e a preparar conselhos…' : 'Instruções em inglês. Com a tua chave do Gemini (Perfil, Inteligência artificial), aparecem em português, com conselhos de técnica.'}</p>`;
 }
 
 /* ---------- IA (Gemini, chave do utilizador) ---------- */
@@ -989,7 +991,7 @@ function blocoDicas(ex, d){
 // A chamada à IA vive em ia-comum.js (comum às apps): troca de modelo quando um esgota, espera nos limites por minuto e Groq de reserva.
 function cancelarIA(){ IA.cancelar(); }
 async function geminiTexto(texto, json = true, espera = 40000){
-  if (!cfg.chave) throw new Error('Falta a chave do Gemini no Perfil.');
+  if (!temIA()) throw new Error('Falta a chave da IA: põe a do Gemini (ou a do Groq) no Perfil.');
   return IA.pedir({texto, json, espera, chave: cfg.chave, modelo: cfg.modelo});
 }
 function lerJSON(txt){
@@ -1066,7 +1068,8 @@ function renderPerfil(){
     <div class="placa rebites col"><h2>Inteligência artificial</h2>
       <p class="suave peq" style="margin:0">A Forja usa o Gemini da Google, com uma chave gratuita tua. Fica guardada só neste dispositivo. Para criar: abre <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a>, entra com a conta Google, toca em "Create API key" e cola a chave aqui.</p>
       <label class="campo">Chave do Gemini<div class="linha"><input type="password" id="pChave" value="${esc(cfg.chave)}" placeholder="Cola aqui a chave" autocomplete="off"><button class="btn icone" data-acao="verChave">Ver</button></div></label>
-      <div class="linha"><button class="btn quente" data-acao="testarIA">Guardar e testar ligação</button><span class="suave mini cresce" id="iaTeste">${cfg.chave ? 'Modelo: ' + esc(cfg.modelo) : ''}</span></div></div>
+      <div class="linha"><button class="btn quente" data-acao="testarIA">Guardar e testar ligação</button><span class="suave mini cresce" id="iaTeste">${cfg.chave ? 'Modelo: ' + esc(cfg.modelo) : ''}</span></div>
+      ${!cfg.chave && IA.origemChave(cfg.chave) ? `<p class="suave mini" style="margin:6px 0 0">Sem chave própria: a usar a chave do Gemini ${IA.origemChave(cfg.chave) === 'outra app tua' ? 'de outra app tua' : 'da ' + esc(IA.origemChave(cfg.chave))}, neste aparelho.</p>` : !cfg.chave && IA.temGroq() ? '<p class="suave mini" style="margin:6px 0 0">Sem chave do Gemini: a IA usa o Groq de reserva.</p>' : ''}</div>
     <div class="placa rebites col"><h2>IA de reserva (Groq)</h2>${IA.htmlGroq({sub: 'suave peq', pri: 'btn quente'})}</div>
     <details class="placa col"><summary><h2 style="display:inline">Sincronização entre dispositivos</h2> <span class="suave peq">(opcional)</span></summary>
       <div class="col" style="margin-top:12px"><p class="suave peq" style="margin:0">Guarda os treinos num repositório privado teu no GitHub, para teres os mesmos dados no telemóvel e no PC. Cria um repositório privado (por exemplo, forja-dados) e um token "fine-grained" com permissão Contents: Read and write só nesse repositório.</p>
