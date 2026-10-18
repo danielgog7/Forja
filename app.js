@@ -127,7 +127,7 @@ let ativo = LS.get('ativo', null);
 let descanso = LS.get('descanso', null);
 let dicas = LS.get('dicas', {});
 let EX = [], EXI = {};
-const PARTILHADO = ['nome', 'objetivo', 'nivel', 'dias', 'duracao', 'equip', 'favs', 'modelos', 'meta', 'aquecer', 'alongar', 'tSerie', 'tSeries'];
+const PARTILHADO = ['nome', 'objetivo', 'nivel', 'dias', 'duracao', 'equip', 'favs', 'modelos', 'meta', 'aquecer', 'alongar', 'tSerie', 'tSeries', 'metasSemana'];
 function guardarCfg(partilhado){ if (partilhado){ cfg.ts = Date.now(); agendarSync(); } LS.set('cfg', cfg); }
 let tGuardar;
 function guardarAtivo(ja){ clearTimeout(tGuardar); if (ja) LS.set('ativo', ativo); else tGuardar = setTimeout(() => LS.set('ativo', ativo), 300); ecraLigado(); }
@@ -464,18 +464,63 @@ function semana(){
   const dias = new Set(treinos.map(t => inicioDia(t.inicio)));
   return ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((l, i) => { const d = seg.getTime() + i * DIA; return {l, acesa: dias.has(inicioDia(d + 3600e3)), hoje: d === inicioDia(Date.now())}; });
 }
+/* ---------- A espada da semana (desenho em espadas.js) ---------- */
+const chaveSemana = ts => { const d = new Date(segundaDeTs(ts)); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+function segundaDeTs(ts){ const d = new Date(ts); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); }
+// A meta de cada semana fica guardada quando a semana está a decorrer, para as espadas antigas não mudarem se mudares a meta.
+function metaDaSemana(chave){
+  const m = cfg.metasSemana || {}, atual = chaveSemana(Date.now());
+  if (chave === atual && m[chave] !== cfg.dias){ cfg.metasSemana = Object.assign({}, m, {[chave]: cfg.dias}); guardarCfg(true); return cfg.dias; }
+  return m[chave] || cfg.dias;
+}
+function semanaForja(segTs){
+  const fim = segTs + 7 * DIA + 3600e3, lista = treinos.filter(t => t.inicio >= segTs && t.inicio < fim).sort((a, b) => a.inicio - b.inicio);
+  const chave = chaveSemana(segTs + 3600e3), meta = metaDaSemana(chave), dias = new Set(lista.map(t => inicioDia(t.inicio))).size;
+  const esp = espadaDaSemana(chave);
+  return {chave, seg: segTs, lista, dias, meta, esp, prog: progressoEspada(esp, dias, meta)};
+}
+const rotuloSemana = seg => { const a = new Date(seg + 3600e3), b = new Date(seg + 6 * DIA + 3600e3), m = d => d.toLocaleDateString('pt-PT', {month: 'short'}).replace('.', '');
+  return a.getMonth() === b.getMonth() ? `${a.getDate()}–${b.getDate()} ${m(b)}` : `${a.getDate()} ${m(a)} – ${b.getDate()} ${m(b)}`; };
+const raridadeTxt = r => `<span class="raridade" style="--cor:${RARIDADES[r][1]}">${RARIDADES[r][0]}</span>`;
+function folhaEspada(segTs){
+  const S = semanaForja(+segTs), E = S.esp, P = S.prog, atual = S.seg === segundaDeTs(Date.now());
+  const series = S.lista.reduce((a, t) => a + seriesDe(t), 0), vol = S.lista.reduce((a, t) => a + volumeDe(t), 0), dur = S.lista.reduce((a, t) => a + (t.fim - t.inicio), 0);
+  abrirFolha(cab(esc(E.nome)) + `<p class="suave peq" style="margin:-6px 0 10px">«${esc(E.epiteto)}» · semana de ${rotuloSemana(S.seg)} ${raridadeTxt(E.raridade)}</p>
+    <div class="espada-ficha"><div class="espada-grande">${desenharEspada(E, P, {sufixo: 'f', passada: !atual})}</div>
+      <div class="col" style="gap:8px;flex:1;min-width:0">
+        <div class="peq"><b>${P.completa ? 'Completa' : atual ? 'A forjar' : 'Ficou por acabar'}</b><div class="suave">${S.dias} de ${S.meta} treinos · ${P.feitas} de ${P.total} partes</div></div>
+        <ul class="partes-espada">${E.tipo.partes.map((pt, i) => `<li class="${i < P.feitas ? 'ok' : i === P.feitas && !P.completa && atual ? 'agora' : ''}"><i></i>${pt[1]}</li>`).join('')}</ul>
+        <div class="suave mini">${E.tipo.nome} · ${E.mat.nome}${E.comGema ? ' · ' + E.gema[0] : ''}</div></div></div>
+    ${S.lista.length ? `<div class="estat" style="margin:12px 0"><div><b>${S.lista.length}</b><span>treinos</span></div><div><b>${series}</b><span>séries</span></div><div><b>${num(Math.round(vol / 100) / 10)} t</b><span>levantadas</span></div></div>
+      <div class="lista">${S.lista.map(t => `<div class="item" data-acao="verTreino" data-id="${t.id}" style="padding:10px 12px"><div class="t"><b>${esc(t.nome)}</b><span>${dataCurta(t.inicio)} · ${fmtDur(t.fim - t.inicio)} · ${seriesDe(t)} séries</span></div><span class="quente cinzel">${num(volumeDe(t))} kg</span></div>`).join('')}</div>
+      <p class="apagado mini" style="margin:8px 0 0">Tempo total a treinar: ${fmtDur(dur)}.</p>`
+      : `<p class="suave peq">${atual ? 'Ainda não treinaste esta semana. O primeiro treino começa a forjar a lâmina.' : 'Nesta semana não houve treinos: a espada ficou só desenhada na bigorna.'}</p>`}`, 'espada');
+}
+function blocoArsenal(){
+  if (!treinos.length) return '';
+  const hoje = segundaDeTs(Date.now()), primeira = segundaDeTs(Math.min(...treinos.map(t => t.inicio))), n = Math.min(160, Math.round((hoje - primeira) / (7 * DIA)) + 1);
+  const semanas = Array.from({length: n}, (_, k) => semanaForja(segundaDeTs(hoje - k * 7 * DIA + 3600e3)));
+  const completas = semanas.filter(S => S.prog.completa).length, mostrar = arsenalTodo ? semanas : semanas.slice(0, 9);
+  return `<div class="placa brasa"><div class="linha entre"><h2>O teu arsenal</h2><span class="suave peq">${completas} de ${semanas.length} completas</span></div>
+    <div class="arsenal">${mostrar.map((S, k) => `<div class="arma${S.prog.completa ? ' completa' : ''}${k === 0 ? ' atual' : ''}" data-acao="verEspada" data-v="${S.seg}">
+      <div class="arma-img">${desenharEspada(S.esp, S.prog, {sufixo: 'a', passada: k > 0})}</div>
+      <b>${esc(S.esp.tipo.nome)}</b><span>${k === 0 ? 'esta semana' : rotuloSemana(S.seg)}</span><span class="arma-conta">${S.dias}/${S.meta}</span></div>`).join('')}</div>
+    ${semanas.length > 9 ? `<button class="btn fantasma" data-acao="arsenalTodo" style="width:100%;margin-top:8px">${arsenalTodo ? 'Mostrar só as últimas' : `Ver as ${semanas.length} espadas`}</button>` : ''}</div>`;
+}
+let arsenalTodo = false;
 function renderInicio(){
   const h = new Date().getHours(), ola = h < 6 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 20 ? 'Boa tarde' : 'Boa noite';
   const sem = semana(), feitos = sem.filter(d => d.acesa).length, sug = !ativo && sugestao(), um = ultimoPorMusculo();
   const ultimo = ordenados()[0];
   const cm = calorMusculos();
-  const fPeca = Math.min(1, feitos / Math.max(1, cfg.dias));
+  const SF = semanaForja(segundaDeTs(Date.now()));
   $('#vInicio').innerHTML = `
     <div class="placa brasa heroi">
       <div class="linha entre" style="align-items:flex-start"><div><h3>${ola}${cfg.nome ? ', ' + esc(cfg.nome) : ''}</h3><p class="suave peq" style="margin:4px 0 0">${FRASES[Math.floor(Date.now() / DIA) % FRASES.length]}</p></div>
-        <div class="heroi-conta"><b>${feitos}</b><span>/${cfg.dias}</span></div></div>
-      <div class="heroi-peca">${pecaSVG(fPeca)}</div>
-      <p class="heroi-legenda">${fPeca >= 1 ? 'Lâmina forjada esta semana' : 'A peça da semana'} · ${feitos} de ${cfg.dias} treinos</p>
+        <div class="heroi-conta"><b>${SF.dias}</b><span>/${SF.meta}</span></div></div>
+      <div class="heroi-peca" data-acao="verEspada" data-v="${SF.seg}">${desenharEspada(SF.esp, SF.prog, {horizontal: true, sufixo: 'h'})}</div>
+      <p class="heroi-legenda">${esc(SF.esp.nome)} «${esc(SF.esp.epiteto)}»</p>
+      <p class="heroi-sub">${SF.prog.completa ? 'Espada completa esta semana. Bom trabalho, ferreiro.' : `${SF.prog.feitas} de ${SF.prog.total} partes · a seguir: ${SF.esp.tipo.partes[SF.prog.feitas][1].toLowerCase()}`} ${raridadeTxt(SF.esp.raridade)}</p>
       <div class="brasas">${sem.map(d => `<div class="${d.hoje ? 'hoje' : ''}"><i class="${d.acesa ? 'acesa' : ''}"></i>${d.l}</div>`).join('')}</div>
       ${ativo ? `<button class="btn quente grande" data-acao="irTreino">Voltar ao treino</button>` : `<button class="btn quente grande" data-acao="acender">Acender a forja</button>`}
     </div>
@@ -750,6 +795,7 @@ function terminar(){
     else if (!+melhor.kg && !ant.some(s => +s.kg) && Math.max(...it.series.map(s => s.reps)) > Math.max(...ant.map(s => s.reps))) recordes.push(`${EXI[it.id].n}: ${Math.max(...it.series.map(s => s.reps))} reps`);
   }
   const t = {id: ativo.id, inicio: ativo.inicio, fim: Date.now(), tipo: ativo.tipo, nome: ativo.nome, itens, atualizado: Date.now()};
+  const segT = segundaDeTs(t.inicio), antesE = semanaForja(segT).prog;
   treinos.push(t); guardarTreinos(); marcarSujo(chaveMes(t.inicio));
   ativo = null; guardarAtivo(true); pararDescanso();
   irPara('vInicio');
@@ -757,6 +803,9 @@ function terminar(){
   abrirFolha(`<div class="col centro" style="padding:8px 0 4px">
     <h3>Peça forjada</h3><h1 class="quente" style="font-size:26px">${esc(t.nome)}</h1>
     <div class="estat"><div><b>${fmtDur(t.fim - t.inicio)}</b><span>duração</span></div><div><b>${series}</b><span>séries</span></div><div><b>${num(volumeDe(t))}</b><span>kg levantados</span></div></div>
+    ${(() => { const S = semanaForja(segT), novas = S.esp.tipo.partes.slice(antesE.feitas, S.prog.feitas).map(p => p[1].toLowerCase());
+      return `<div class="placa brasa espada-fim" data-acao="verEspada" data-v="${segT}">${desenharEspada(S.esp, S.prog, {horizontal: true, sufixo: 't'})}
+        <p class="peq" style="margin:6px 0 0">${S.prog.completa && novas.length ? `<b>${esc(S.esp.nome)} completa!</b> «${esc(S.esp.epiteto)}» junta-se ao teu arsenal.` : novas.length ? `A ${esc(S.esp.tipo.nome.toLowerCase())} ganhou: <b>${novas.join(', ')}</b>.` : S.prog.completa ? 'A espada desta semana já estava completa.' : `A ${esc(S.esp.tipo.nome.toLowerCase())} está a aquecer. A próxima parte é: ${esc(S.esp.tipo.partes[S.prog.feitas][1].toLowerCase())}.`}</p></div>`; })()}
     ${recordes.length ? `<div class="placa brasa" style="text-align:left"><h2>Novos recordes</h2><ul class="dicas">${recordes.map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>` : ''}
     <button class="btn quente grande" data-acao="fecharFolha">Arrefecer</button></div>`);
   setTimeout(() => { Faiscas.explosao(innerWidth / 2, innerHeight * .55, 70); vibrar([40, 60, 40]); }, 150);
@@ -872,7 +921,7 @@ function renderExercicios(){
     const contaTodos = id => EX.filter(e => e.req.includes(id)).length;
     corpo = `<div class="placa rebites"><h2>O teu equipamento</h2><div class="grelha">${EQUIP.filter(e => meu.includes(e.id)).map(e => tileEq(e, true, 'exEq', `<span class="n">${conta(e.id)}</span>`)).join('')}</div></div>
       <div class="placa sobria"><h2>Favoritos</h2>${cfg.favs.length ? `<div class="lista">${cfg.favs.map(id => EXI[id]).filter(Boolean).map(e => linhaEx(e)).join('')}</div>` : '<p class="suave peq" style="margin:0">Marca exercícios com a estrela para os teres sempre à mão e para aparecerem mais nos treinos gerados.</p>'}</div>
-      <details class="placa sobria" ${exf.outros ? 'open' : ''} data-acao="exOutros"><summary><h2 style="display:inline">Outro equipamento</h2> <span class="suave peq">(ver exercícios que ainda não podes fazer)</span></summary>
+      <details class="placa sobria" ${exf.outros ? 'open' : ''} data-acao="exOutros"><summary><h2 style="display:inline">Outros equipamentos</h2></summary>
         <div class="grelha" style="margin-top:12px">${EQUIP.filter(e => !meu.includes(e.id)).map(e => tileEq(e, false, 'exEq', `<span class="n">${contaTodos(e.id)}</span>`)).join('')}</div></details>`;
   } else {
     const e = exf.eq && EQ[exf.eq];
@@ -1073,7 +1122,7 @@ function renderHistorico(){
   for (const t of lista){ const k = new Date(t.inicio).toLocaleDateString('pt-PT', {month: 'long', year: 'numeric'}); (grupos[k] = grupos[k] || []).push(t); }
   $('#vHistorico').innerHTML = `<h2>Histórico</h2>
     <div class="estat"><div><b>${lista.length}</b><span>treinos</span></div><div><b>${doMes.length}</b><span>este mês</span></div><div><b>${num(lista.reduce((a, t) => a + volumeDe(t), 0) / 1000)} t</b><span>levantadas</span></div></div>
-    ${blocoBrasasHist()}${blocoVolumeSemanas()}${blocoMusculosSemana()}${blocoTrofeus()}
+    ${blocoArsenal()}${blocoBrasasHist()}${blocoVolumeSemanas()}${blocoMusculosSemana()}${blocoTrofeus()}
     ${Object.entries(grupos).map(([m, ts]) => `<h3 style="margin-top:6px">${m}</h3><div class="lista">${ts.map(t => `<div class="item" data-acao="verTreino" data-id="${t.id}" style="padding:12px">
       <div class="t"><b>${esc(t.nome)}</b><span>${dataCurta(t.inicio)} · ${fmtDur(t.fim - t.inicio)} · ${t.itens.length} exercícios</span></div><span class="quente cinzel">${num(volumeDe(t))} kg</span></div>`).join('')}</div>`).join('')}`;
 }
@@ -2231,6 +2280,7 @@ const ACOES = {
     if (el) el.textContent = `${dataCurta(k)}: ` + (ts.length ? ts.map(t => `${t.nome} · ${seriesDe(t)} séries · ${num(volumeDe(t))} kg`).join('; ') : 'descanso'); },
   hSem(a){ const el = $('#hSemTxt'), n = +a.dataset.n, ini = +a.dataset.ini; if (el) el.textContent = `Semana de ${new Date(ini).toLocaleDateString('pt-PT', {day: 'numeric', month: 'short'}).replace('.', '')}: ${num(+a.dataset.kg)} kg em ${n} ${n === 1 ? 'treino' : 'treinos'}.`;
     document.querySelectorAll('.graf-vol g.sel').forEach(g => g.classList.remove('sel')); a.classList.add('sel'); },
+  verEspada(a){ folhaEspada(+a.dataset.v); }, arsenalTodo(){ arsenalTodo = !arsenalTodo; renderHistorico(); },
   hMusc(a){ histMusc = +a.dataset.v; renderHistorico(); },
   verEx(a){ const f = folhaAtual; voltarFolha = f === 'plano' ? folhaPlano : f === 'rapido' ? () => folhaRapido() : f.startsWith('treino:') ? () => folhaTreino(f.slice(7)) : null; folhaEx(a.dataset.id); },
   voltarFolha(){ const f = voltarFolha; voltarFolha = null; if (f) f(); },

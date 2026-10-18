@@ -396,3 +396,31 @@ nav#nav button.on span, nav#nav button.on { text-shadow: 0 0 10px rgba(255,120,3
 section.vista { animation: surgeForja .32s ease-out; }
 @keyframes surgeForja { from { opacity: 0; transform: translateY(8px); filter: brightness(1.35) sepia(.3); } to { opacity: 1; transform: none; filter: none; } }
 @media (prefers-reduced-motion: reduce) { section.vista { animation: none; } nav#nav button::before { transition: none; } }
+/* ---------- A espada da semana ---------- */
+.espada { display: block; overflow: visible; }
+.heroi-peca { cursor: pointer; margin: 4px -4px 0; }
+.heroi-peca .espada { width: 100%; height: auto; }
+.heroi-sub { margin: -4px 0 0; text-align: center; font-size: 12.5px; color: var(--suave); display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; }
+.raridade { display: inline-block; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; color: var(--cor); border: 1px solid color-mix(in srgb, var(--cor) 55%, transparent); background: color-mix(in srgb, var(--cor) 12%, transparent); }
+.arsenal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+.arma { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 8px; border-radius: 12px; background: #161009; border: 1px solid #2c221c; cursor: pointer; text-align: center; position: relative; }
+.arma.completa { border-color: #5a3a14; background: radial-gradient(80% 60% at 50% 40%, rgba(255,170,60,.10), transparent 70%), #161009; }
+.arma.atual { border-color: #8a3c14; box-shadow: 0 0 16px rgba(255,90,20,.14); }
+.arma-img { height: 150px; display: flex; align-items: center; justify-content: center; }
+.arma-img .espada { height: 150px; width: auto; }
+.arma b { font-size: 12px; font-weight: 600; line-height: 1.2; } .arma span { font-size: 11px; color: var(--apagado); }
+.arma .arma-conta { position: absolute; top: 6px; right: 7px; font-family: 'Cinzel', Georgia, serif; color: var(--ouro); font-size: 11px; }
+.arma:not(.completa) .arma-conta { color: var(--apagado); }
+.espada-ficha { display: flex; gap: 14px; align-items: center; }
+.espada-grande { flex: none; width: 116px; height: 300px; display: flex; justify-content: center; align-items: center; }
+.espada-grande .espada { height: 300px; width: auto; }
+.partes-espada { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--apagado); }
+.partes-espada li { display: flex; align-items: center; gap: 8px; }
+.partes-espada i { width: 12px; height: 12px; border-radius: 50%; border: 1px dashed #5c4a3e; flex: none; }
+.partes-espada li.ok { color: var(--texto); } .partes-espada li.ok i { border: 0; background: radial-gradient(circle at 40% 35%, #fff1cf, #ffb347 40%, #c2410f); box-shadow: 0 0 8px rgba(255,140,40,.6); }
+.partes-espada li.agora { color: #ffb06a; } .partes-espada li.agora i { border: 1px solid #ff8a2a; box-shadow: 0 0 8px rgba(255,120,30,.6); }
+.espada-fim { text-align: center; cursor: pointer; padding: 12px; } .espada-fim .espada { width: 100%; height: auto; }
+.heroi-peca .espada { max-height: 120px; margin: 0 auto; }
+.espada-fim .espada { max-height: 90px; margin: 0 auto; }
+.arma-img .espada { max-width: 100%; }
+.espada-grande .espada { max-width: 116px; }
